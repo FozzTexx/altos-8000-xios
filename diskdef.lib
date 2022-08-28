@@ -46,7 +46,7 @@
 ;	dsk	set	0
 ;		rept	3
 ;	dsk	set	dsk+1
-;		diskdef	%dsk,0
+;		diskdef	dsk,0
 ;		endm
 ;		endef
 ;
@@ -61,10 +61,10 @@
 ;
 dskhdr	macro	dn
 ;;	define a single disk header list
-dpe&dn:	dw	xlt&dn,0000h	;translate table
+dpe_dn:	dw	xlt_dn,0000h	;translate table
 	dw	0000h,0000h	;scratch area
-	dw	dirbuf,dpb&dn	;dir buff,parm block
-	dw	csv&dn,alv&dn	;check, alloc vectors
+	dw	dirbuf,dpb_dn	;dir buff,parm block
+	dw	csv_dn,alv_dn	;check, alloc vectors
 	endm
 ;
 disks	macro	nd
@@ -74,23 +74,13 @@ dpbase	equ	$	;base of disk parameter blocks
 ;;	generate the nd elements
 dsknxt	set	0
 	rept	nd
-	dskhdr	%dsknxt
+	dskhdr	dsknxt
 dsknxt	set	dsknxt+1
 	endm
 	endm
 ;
 dpbhdr	macro	dn
-dpb&dn	equ	$		;disk parm block
-	endm
-;
-ddb	macro	data,comment
-;;	define a db statement
-	db	data		comment
-	endm
-;
-ddw	macro	data,comment
-;;	define a dw statement
-	dw	data		comment
+dpb_dn	equ	$		;disk parm block
 	endm
 ;
 gcd	macro	m,n
@@ -113,20 +103,20 @@ gcdn	set	gcdr
 ;
 diskdef	macro	dn,fsc,lsc,skf,bls,dks,dir,cks,ofs,k16
 ;;	generate the set statements for later tables
-	if	nul lsc
+	if	~~strlen("LSC")
 ;;	current disk dn same as previous fsc
-dpb&dn	equ	dpb&fsc	;equivalent parameters
-als&dn	equ	als&fsc	;same allocation vector size
-css&dn	equ	css&fsc	;same checksum vector size
-xlt&dn	equ	xlt&fsc	;same translate table
+dpb_dn	equ	dpb_fsc	;equivalent parameters
+als_dn	equ	als_fsc	;same allocation vector size
+css_dn	equ	css_fsc	;same checksum vector size
+xlt_dn	equ	xlt_fsc	;same translate table
 	else
 secmax	set	lsc-(fsc)	;;sectors 0...secmax
 sectors	set	secmax+1;;number of sectors
-als&dn	set	(dks)/8	;;size of allocation vector
-	if	((dks) mod 8) ne 0
-als&dn	set	als&dn+1
+als_dn	set	(dks)/8	;;size of allocation vector
+	if	((dks) # 8) <> 0
+als_dn	set	als_dn+1
 	endif
-css&dn	set	(cks)/4	;;number of checksum elements
+css_dn	set	(cks)/4	;;number of checksum elements
 ;;	generate the block shift value
 blkval	set	bls/128	;;number of sectors/block
 blkshf	set	0	;;counts right 0's in blkval
@@ -137,7 +127,7 @@ blkmsk	set	0	;;fills with 1's from right
 	endif
 ;;	otherwise, high order 1 not found yet
 blkshf	set	blkshf+1
-blkmsk	set	(blkmsk shl 1) or 1
+blkmsk	set	(blkmsk << 1) | 1
 blkval	set	blkval/2
 	endm
 ;;	generate the extent mask byte
@@ -148,15 +138,15 @@ extmsk	set	0	;;fill from right with 1's
 	exitm
 	endif
 ;;	otherwise more to shift
-extmsk	set	(extmsk shl 1) or 1
+extmsk	set	(extmsk << 1) | 1
 blkval	set	blkval/2
 	endm
 ;;	may be double byte allocation
 	if	(dks) > 256
-extmsk	set	(extmsk shr 1)
+extmsk	set	(extmsk >> 1)
 	endif
 ;;	may be optional [0] in last position
-	if	not nul k16
+	if	strlen("K16")
 extmsk	set	k16
 	endif
 ;;	now generate directory reservation bit vector
@@ -169,7 +159,7 @@ dirblk	set	0	;;fill with 1's on each loop
 	endif
 ;;	not complete, iterate once again
 ;;	shift right and add 1 high order bit
-dirblk	set	(dirblk shr 1) or 8000h
+dirblk	set	(dirblk >> 1) | 8000h
 	if	dirrem > dirbks
 dirrem	set	dirrem-dirbks
 	else
@@ -177,38 +167,38 @@ dirrem	set	0
 	endif
 	endm
 	dpbhdr	dn	;;generate equ $
-	ddw	%sectors,<;sec per track>
-	ddb	%blkshf,<;block shift>
-	ddb	%blkmsk,<;block mask>
-	ddb	%extmsk,<;extnt mask>
-	ddw	%(dks)-1,<;disk size-1>
-	ddw	%(dir)-1,<;directory max>
-	ddb	%dirblk shr 8,<;alloc0>
-	ddb	%dirblk and 0ffh,<;alloc1>
-	ddw	%(cks)/4,<;check size>
-	ddw	%ofs,<;offset>
+	dw	sectors ;sec per track
+	db	blkshf ;block shift
+	db	blkmsk ;block mask
+	db	extmsk ;extnt mask
+	dw	(dks)-1 ;disk size-1
+	dw	(dir)-1 ;directory max
+	db	dirblk >> 8 ;alloc0
+	db	dirblk & 0ffh ;alloc1
+	dw	(cks)/4 ;check size
+	dw	ofs ;offset
 ;;	generate the translate table, if requested
-	if	nul skf
-xlt&dn	equ	0		;no xlate table
+	if	~~strlen("SKF")
+xlt_dn	equ	0		;no xlate table
 	else
 	if	skf = 0
-xlt&dn	equ	0		;no xlate table
+xlt_dn	equ	0		;no xlate table
 	else
 ;;	generate the translate table
 nxtsec	set	0	;;next sector to fill
 nxtbas	set	0	;;moves by one on overflow
-	gcd	%sectors,skf
+	gcd	sectors,skf
 ;;	gcdn = gcd(sectors,skew)
 neltst	set	sectors/gcdn
 ;;	neltst is number of elements to generate
 ;;	before we overlap previous elements
 nelts	set	neltst	;;counter
-xlt&dn	equ	$		;translate table
+xlt_dn	equ	$		;translate table
 	rept	sectors	;;once for each sector
 	if	sectors < 256
-	ddb	%nxtsec+(fsc)
+	db	nxtsec+(fsc)
 	else
-	ddw	%nxtsec+(fsc)
+	dw	nxtsec+(fsc)
 	endif
 nxtsec	set	nxtsec+(skf)
 	if	nxtsec >= sectors
@@ -223,6 +213,7 @@ nelts	set	neltst
 	endm
 	endif	;;end of nul fac test
 	endif	;;end of nul bls test
+	endif
 	endm
 ;
 defds	macro	lab,space
@@ -230,7 +221,7 @@ lab:	ds	space
 	endm
 ;
 lds	macro	lb,dn,val
-	defds	lb&dn,%val&dn
+	defds	lb_dn,val_dn
 	endm
 ;
 endef	macro
@@ -239,12 +230,12 @@ begdat	equ	$
 dirbuf:	ds	128	;directory access buffer
 dsknxt	set	0
 	rept	ndisks	;;once for each disk
-	lds	alv,%dsknxt,als
-	lds	csv,%dsknxt,css
+	lds	alv,dsknxt,als
+	lds	csv,dsknxt,css
 dsknxt	set	dsknxt+1
 	endm
 enddat	equ	$
 datsiz	equ	$-begdat
-force:	db	0	;force out last byte in hex file
+;;	db 0 at this point forces hex record
 	endm
 ;

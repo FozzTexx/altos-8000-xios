@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+import sys
+import subprocess
+import re
+
+cmd = sys.argv
+cmd[0] = "asl"
+
+	# ERR > > > xios.asm(1873): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1875): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1877): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1879): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1881): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1883): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1885): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(1887): warning: no memory reserved, are you sure you wanted that?
+	# ERR > > > xios.asm(2704) DISKDEF(2): error: expression must be evaluatable in first pass
+	# ERR > > > xios.asm(2704) DISKDEF(4):1: error: invalid symbol name
+	# ERR > > > xios.asm(2704) DISKDEF(4):7: error: unknown instruction
+	# ERR > > > xios.asm(2704) DISKDEF(5):1: error: invalid symbol name
+	# ERR > > > xios.asm(2704) DISKDEF(5):7: error: unknown instruction
+	# ERR > > > xios.asm(2704) DISKDEF(6):1: error: invalid symbol name
+	# ERR > > > xios.asm(2704) DISKDEF(6):7: error: unknown instruction
+	# ERR > > > xios.asm(2704) DISKDEF(7):1: error: invalid symbol name
+	# ERR > > > xios.asm(2704) DISKDEF(7):7: error: unknown instruction
+	# ERR > > > xios.asm(2711): error: ELSEIF/ENDIF without IF
+
+        
+with subprocess.Popen(cmd, stderr=subprocess.PIPE) as p:
+  while True:
+    line = p.stderr.readline()
+    if not line:
+      break
+    line = line.decode("utf-8").rstrip("\n")
+    if line.startswith("> > > "):
+      match = re.search("> > > ([^(]+)\(([0-9]+)\)(.*): (warning|error): (.*)", line)
+      if match:
+        path = match.group(1)
+        lnum = match.group(2)
+        parm = match.group(3)
+        errw = match.group(4)
+        rest = match.group(5)
+        line = path + ":" + lnum + ":" + " " + errw + ":" + parm + " " + rest
+      else:
+        print("WTF", line)
+    print(line, file=sys.stderr)
+    
+  p.wait()
+  exit(p.returncode)
+  

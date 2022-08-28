@@ -1,6 +1,6 @@
-AS=z80asm
+AS=./asl-err-wrap -cpu z80
 
 default: xios.bin
 
 xios.bin: xios.asm
-	$(AS) $<
+	$(AS) -L $(basename $<).lst $<
