@@ -1,32 +1,26 @@
 #!/usr/bin/env python3
+import argparse
 import sys
 import subprocess
 import re
+import tempfile
+import os
 
-cmd = sys.argv
-cmd[0] = "asl"
+def build_argparser():
+  parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+  parser.add_argument("file", help="input file")
+  parser.add_argument("--cpu", "-cpu", required=True, help="cpu type")
+  parser.add_argument("--listing", "-L", help="file to write listing output to")
+  parser.add_argument("--spr", action="store_true", help="create MP/M II spr")
+  return parser
 
-	# ERR > > > xios.asm(1873): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1875): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1877): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1879): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1881): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1883): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1885): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(1887): warning: no memory reserved, are you sure you wanted that?
-	# ERR > > > xios.asm(2704) DISKDEF(2): error: expression must be evaluatable in first pass
-	# ERR > > > xios.asm(2704) DISKDEF(4):1: error: invalid symbol name
-	# ERR > > > xios.asm(2704) DISKDEF(4):7: error: unknown instruction
-	# ERR > > > xios.asm(2704) DISKDEF(5):1: error: invalid symbol name
-	# ERR > > > xios.asm(2704) DISKDEF(5):7: error: unknown instruction
-	# ERR > > > xios.asm(2704) DISKDEF(6):1: error: invalid symbol name
-	# ERR > > > xios.asm(2704) DISKDEF(6):7: error: unknown instruction
-	# ERR > > > xios.asm(2704) DISKDEF(7):1: error: invalid symbol name
-	# ERR > > > xios.asm(2704) DISKDEF(7):7: error: unknown instruction
-	# ERR > > > xios.asm(2711): error: ELSEIF/ENDIF without IF
+def assemble(path, cpu, listing=None):
+  cmd = ["asl", "-cpu", cpu]
+  if listing:
+    cmd.extend(["-L", listing])
+  cmd.append(path)
 
-        
-with subprocess.Popen(cmd, stderr=subprocess.PIPE) as p:
+  p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
   while True:
     line = p.stderr.readline()
     if not line:
@@ -41,10 +35,70 @@ with subprocess.Popen(cmd, stderr=subprocess.PIPE) as p:
         errw = match.group(4)
         rest = match.group(5)
         line = path + ":" + lnum + ":" + " " + errw + ":" + parm + " " + rest
-      else:
-        print("WTF", line)
     print(line, file=sys.stderr)
-    
+
   p.wait()
-  exit(p.returncode)
+  return p.returncode
+
+def p2bin(path):
+  data = None
+  tf = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
+  tf.close()
+  base, ext = os.path.splitext(path)
+  cmd = ["p2bin", base + ".p", tf.name]
+  subprocess.run(cmd)
+  with open(tf.name, "rb") as f:
+    data = f.read()
+  os.unlink(tf.name)
+  return data
   
+def main():
+  args = build_argparser().parse_args()
+
+  exit_code = assemble(args.file, args.cpu, args.listing)
+  
+  if not exit_code and args.spr:
+    base, ext = os.path.splitext(args.file)
+    directory = os.path.dirname(args.file)
+    if not directory:
+      directory = "."
+    tf = tempfile.NamedTemporaryFile(delete=False, suffix=ext, dir=directory)
+    tf.write("\tphase 0100h\n".encode("ASCII"))
+    with open(args.file, "r") as f:
+      contents = f.read()
+      tf.write(contents.encode("ASCII"))
+    tf.close()
+    exit_code = assemble(tf.name, args.cpu)
+
+    bin1 = p2bin(args.file)
+    bin2 = p2bin(tf.name)
+
+    tbase, ext = os.path.splitext(tf.name)
+    os.unlink(tf.name)
+    os.unlink(tbase + ".p")
+
+    reloc_map = 0
+    if len(bin1) != len(bin2):
+      exit_code = 1
+    else:
+      for idx in range(len(bin1)):
+        reloc_map <<= 1
+        reloc_map |= bin1[idx] != bin2[idx]
+
+      byte_len = (len(bin1) + 7) // 8
+
+      pad_bits = byte_len * 8 - len(bin1)
+      reloc_map <<= pad_bits
+      reloc_bin = int.to_bytes(reloc_map, byte_len, "big")
+
+      header = bytearray([0] * 256)
+      header[1:3] = int.to_bytes(len(bin1), 2, "little")
+      with open(base + ".spr", "wb") as f:
+        f.write(header)
+        f.write(bin1)
+        f.write(reloc_bin)
+      
+  return exit_code
+
+if __name__ == '__main__':
+  exit(main() or 0)
