@@ -56,8 +56,8 @@
 ;	MACLIB	DISKDEF	; Replaced by include statement
 ;	MACLIB	Z80S	; Not needed, have a Z80 assembler
 
-;; TRUE	EQU	0FFFFH	;VALUE FOR TRUE
-;; FALSE	EQU	NOT TRUE	;VALUE FOR FALSE
+TRUE	set	0FFFFH	;VALUE FOR TRUE
+FALSE	set	~~TRUE	;VALUE FOR FALSE
 
 MDISK	equ	FALSE	;Virtual Disk cond asm bool
 MPM20	equ	TRUE	;MP/M 2.0 cond asm boolean
