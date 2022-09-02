@@ -45,18 +45,18 @@ def p2bin(path):
   tf = tempfile.NamedTemporaryFile(delete=False, suffix=".bin")
   tf.close()
   base, ext = os.path.splitext(path)
-  cmd = ["p2bin", base + ".p", tf.name]
+  cmd = ["p2bin", "-l", "0x00", base + ".p", tf.name]
   subprocess.run(cmd)
   with open(tf.name, "rb") as f:
     data = f.read()
   os.unlink(tf.name)
   return data
-  
+
 def main():
   args = build_argparser().parse_args()
 
   exit_code = assemble(args.file, args.cpu, args.listing)
-  
+
   if not exit_code and args.spr:
     base, ext = os.path.splitext(args.file)
     directory = os.path.dirname(args.file)
@@ -93,11 +93,16 @@ def main():
 
       header = bytearray([0] * 256)
       header[1:3] = int.to_bytes(len(bin1), 2, "little")
+
       with open(base + ".spr", "wb") as f:
         f.write(header)
         f.write(bin1)
         f.write(reloc_bin)
-      
+        offset = f.tell()
+        pad = 128 - offset % 128
+        if pad:
+          f.write(bytes([0x1a] * pad))
+
   return exit_code
 
 if __name__ == '__main__':
