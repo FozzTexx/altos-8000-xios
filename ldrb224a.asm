@@ -33,7 +33,7 @@
 ;----------------------------------------------------------------------
 
 	org	01700h
-	
+
 	;; public	bdos
 
 	;; extrn	conout
@@ -84,7 +84,7 @@ setmem	equ	26		;set DMA address
 ;----------------------------------------------------------------------
 
 cbstr:				;starting address of cbios
-	jp	cstart		;cold start
+	jp	nobios		;cold start
 wboot:
 	jp	$		;no warm start in loader BIOS
 	ld	a,0		;console status
@@ -102,7 +102,7 @@ wboot:
 	jp	$		;reader not implemented
 
 	jp	home		;home disk
-	jp	seldsk		;select a disk
+	jp	cstart		;select a disk
 	jp	settrk		;select a specific track
 	jp	setsec		;select a specific sector
 	jp	setdma		;set the "Disk Memory Access" address
@@ -128,7 +128,8 @@ fcb:	db	0,'CBIOSxx COM',0,0,0,0
 	db	0
 fcbnam	equ	fcb+6
 
-	org	( ( ($-cbstr) + 0a1h) & 0ff00h) + 05eh
+	org	(($ + 0ffh - 5eh) & 0ff00h) + 5eh
+
 ;				;start of interrupt vector table
 ivctbl:
 	dw	dskint		;floppy and hard disk interrupt
@@ -147,7 +148,7 @@ cstart:
 ;
 ;----------------------------------------------------------------------
 
-	ld	sp,ccp		;put stack pointer out of the way
+	;; ld	sp,ccp		;put stack pointer out of the way
 
 	xor	a
 	ld	(iobyte),a
@@ -157,86 +158,88 @@ cstart:
 	ld	a,h
 	ld	i,a		;set the <I> register
 
-;	Copy the CCP and BDOS code to location 0100H in bank 1.  The warm
-;	boot routine in the regular CBIOS will use this copy to do the warm
-;	boot.  This means that the warm boot will require no I/O.
+	jp	seldsk		;done with setting up interrupts, do select
 
-	in	a,(bankpt)	;get current port value
-	ld	b,a		;save
-	and	0e7h		;mask out bank select
-	or	008h
-	out	(bankpt),a	;select bank 1
-	ld	a,b		;get original port value
+;; ;	Copy the CCP and BDOS code to location 0100H in bank 1.  The warm
+;; ;	boot routine in the regular CBIOS will use this copy to do the warm
+;; ;	boot.  This means that the warm boot will require no I/O.
 
-	ld	hl,ccp		;"from" address
-	ld	de,tbase	;"to" address
-	ld	bc,cbstr-ccp	;length of move
-	ldir
+;; 	in	a,(bankpt)	;get current port value
+;; 	ld	b,a		;save
+;; 	and	0e7h		;mask out bank select
+;; 	or	008h
+;; 	out	(bankpt),a	;select bank 1
+;; 	ld	a,b		;get original port value
 
-	out	(bankpt),a	;select bank 0
+;; 	ld	hl,ccp		;"from" address
+;; 	ld	de,tbase	;"to" address
+;; 	ld	bc,cbstr-ccp	;length of move
+;; 	ldir
 
-;	Initialize BDOS
+;; 	out	(bankpt),a	;select bank 0
 
-	ld	c,rstcpm
-	call	bdos		;reset disk system
+;; ;	Initialize BDOS
 
-	ld	c,dspmsg
-	ld	de,msg		;point to loader message
-	call	bdos		;display on CRT
+;; 	ld	c,rstcpm
+;; 	call	bdos		;reset disk system
 
-;				;try to find real CBIOS and load it
-	ld	hl,(msz)	;load ASCII characters giving memory size
-	ld	(fcbnam),hl	;put it in the FCB
-	ld	(nomsz),hl	;put in error message in case CBIOS not found
+;; 	ld	c,dspmsg
+;; 	ld	de,msg		;point to loader message
+;; 	call	bdos		;display on CRT
 
-	ld	c,open
-	ld	de,fcb		;point to FCB
-	call	bdos		;open file
-	cp	0ffh		;check to see what happened
-	jp	z,nobios	;if not found...branch
+;; ;				;try to find real CBIOS and load it
+;; 	ld	hl,(msz)	;load ASCII characters giving memory size
+;; 	ld	(fcbnam),hl	;put it in the FCB
+;; 	ld	(nomsz),hl	;put in error message in case CBIOS not found
 
-	ld	de,tbase	;point to start of TPA
+;; 	ld	c,open
+;; 	ld	de,fcb		;point to FCB
+;; 	call	bdos		;open file
+;; 	cp	0ffh		;check to see what happened
+;; 	jp	z,nobios	;if not found...branch
 
-bootlp:
-	push	de		;save DMA address
-	ld	c,setmem
-	call	bdos		;set the DMA address
+;; 	ld	de,tbase	;point to start of TPA
 
-	ld	c,reads
-	ld	de,fcb
-	call	bdos		;read 128 bytes
+;; bootlp:
+;; 	push	de		;save DMA address
+;; 	ld	c,setmem
+;; 	call	bdos		;set the DMA address
 
-	pop	de		;retrieve DMA address
-	or	a		;check for end of file
-	jr	nz,movinf	;if eof...branch
+;; 	ld	c,reads
+;; 	ld	de,fcb
+;; 	call	bdos		;read 128 bytes
 
-	ld	hl,128
-	add	hl,de
-	ex	de,hl		;point to next location for read
-	jr	bootlp
+;; 	pop	de		;retrieve DMA address
+;; 	or	a		;check for end of file
+;; 	jr	nz,movinf	;if eof...branch
 
-movinf:
-	ld	hl,bspit	;point to "from" location
-	ld	de,wrkspc	;point to "to" location
-	ld	bc,bsplen	;length of BSPIT
-	ldir			;move parameter info to low memory
+;; 	ld	hl,128
+;; 	add	hl,de
+;; 	ex	de,hl		;point to next location for read
+;; 	jr	bootlp
 
-	ld	hl,movpgm	;point to "from" location
-	ld	de,wrkspc+bsplen	;point to "to" location
-	ld	bc,mplen	;get length of move
-	ldir			;move the program which will move CBIOS
+;; movinf:
+;; 	ld	hl,bspit	;point to "from" location
+;; 	ld	de,wrkspc	;point to "to" location
+;; 	ld	bc,bsplen	;length of BSPIT
+;; 	ldir			;move parameter info to low memory
 
-	jp	wrkspc+bsplen	;execute the move program
+;; 	ld	hl,movpgm	;point to "from" location
+;; 	ld	de,wrkspc+bsplen	;point to "to" location
+;; 	ld	bc,mplen	;get length of move
+;; 	ldir			;move the program which will move CBIOS
 
-movpgm:				;this program will move CBIOS from the TPA
-;				;.. to high memory
-	ld	hl,tbase	;point to "from" location
-	ld	de,cbstr	;point to "to" location (ie. overlay loader)
-	ld	bc,biosln	;length of move
-	ldir			;move CBIOS to proper location
+;; 	jp	wrkspc+bsplen	;execute the move program
 
-	jp	cbstr		;jump to cold boot location
-mplen	equ	$-movpgm	;length of code to do the move of CBIOS
+;; movpgm:				;this program will move CBIOS from the TPA
+;; ;				;.. to high memory
+;; 	ld	hl,tbase	;point to "from" location
+;; 	ld	de,cbstr	;point to "to" location (ie. overlay loader)
+;; 	ld	bc,biosln	;length of move
+;; 	ldir			;move CBIOS to proper location
+
+;; 	jp	cbstr		;jump to cold boot location
+;; mplen	equ	$-movpgm	;length of code to do the move of CBIOS
 
 	newpage
 msg:

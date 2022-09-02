@@ -68,10 +68,6 @@ sdslpt	equ	009H		;Side select port
 scmsk	equ	080H		;Side count bit
 ssmsk	equ	020H		;Side select bit
 
-	ifndef	bankpt
-bankpt	equ	025H		;Bank select port for both "DMA" and memory
-	endif
-
 ;	ports for 1797
 
 cmdpt	equ	004H		;1797 command register
@@ -184,7 +180,7 @@ cyl800:
 	and	snrdy+sskerr+scrcer	;check for not ready, seek error
 ;					;.. and crc error
 	ret	z		;exit if no error
-	
+
 	ld	a,1		;show error
 	ret			;exit
 

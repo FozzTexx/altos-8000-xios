@@ -58,7 +58,6 @@
 
 seldsk:
 	ld	hl,dph000	;put DPH address in <HL>
-
 	ret			;exit
 
 ;----------------------------------------------------------------------
@@ -100,6 +99,7 @@ settrk:
 settr4:
 	ld	(newcyl),bc	;save cylinder number
 	ld	(newhed),a	;save head number
+	ld	c,a
 	ret			;exit
 
 
@@ -165,6 +165,19 @@ setdma:
 ;----------------------------------------------------------------------
 
 sectrn:
+	;; ld	hl,secmsg
+	;; push	bc
+	;; call	putmsg
+	;; call	puthex4
+	;; ld	c,' '
+	;; call	conout
+	;; ld	b,d
+	;; ld	c,e
+	;; call	puthex4
+	;; ld	hl,newln
+	;; call	putmsg
+	;; pop	bc
+
 	ex	de,hl
 	ld	a,h
 	or	l		;find out if translate table exists
@@ -191,12 +204,23 @@ sectr5:
 ;----------------------------------------------------------------------
 
 read:
+	;; ld	hl,readmsg
+	;; call	putmsg
+	;; ld	bc,(newcyl)
+	;; call	puthex4
+	;; ld	hl,readmsg+4
+	;; call	putmsg
+	;; ld	bc,(newpsc)
+	;; call	puthex4
+	;; ld	hl,newln
+	;; call	putmsg
+
 	ld	iy,(newpdb)	;point to PDB
 	ld	ix,bpbpl	;point to only BPB
 
 ;				;Search BPB for match on
 ;				;.. new disk address.
-	
+
 	ld	d,(ix+bpcyl+1)
 	ld	e,(ix+bpcyl)	;get BPB cylinder
 	ld	hl,(newcyl)	;get new cylinder
@@ -242,6 +266,8 @@ read15:
 	ld	bc,128		;length of data transfer
 	ldir			;move
 
+	;; ld	hl,(usrdma)
+	;; call	dumprec
 	xor	a		;show no error.
 	ret			;exit
 

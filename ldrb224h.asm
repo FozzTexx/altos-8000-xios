@@ -94,7 +94,7 @@ pdb00:				;Physical Device Block for floppy drive #1
 	db	000h		;Shugart 800 floppy disk drive
 	db	004h		;Select mask - floppy drive #1
 	db	005h		;Flag bits
-	db	002h		;Mode number
+	db	000h		;Mode number
 	db	002h		;Stepping rate indicator
 	db	000h		;Reserved
 	dw	0		;Reserved
@@ -105,7 +105,7 @@ pdb00:				;Physical Device Block for floppy drive #1
 	db	1		;Sector number of first sector
 	dw	77		;Number of cylinders on this device
 	db	1		;Number of heads per cylinder
-	db	48		;Number of physical sectors per track
+	db	26		;Number of physical sectors per track
 	dw	0		;Current cylinder number
 	db	0		;Current head (ie. side) number
 	db	0		;Current physical sector number
@@ -127,7 +127,7 @@ ldb000:				;Logical device block for first logical device
 
 	newpage
 dph000:				;DPH for first floppy disk drive
-	dw	0		;Address of sector translate table
+	dw	sdxlt		;Address of sector translate table
 	dw	0
 	dw	0,0		;Work areas
 	dw	dirbuf		;Address of directory buffer work area
@@ -166,18 +166,16 @@ sdxlt:				;Single density sector translate table
 
 ;	The following DPB may be changed by the setup program for CP/M
 
-;	diskdef	4,1,48,,2048,225,96,96,2,0
-dpbm2:				;Single sided, double density, 128 byte sectors
-;				;.. 1.4 compatibility
-	dw	48		;Sec per track
-	db	4		;Block shift
-	db	15		;Block mask
+dpbm2:				;Single sided, single density, 128 byte sectors
+	dw	26		;Sec per track
+	db	3		;Block shift
+	db	7		;Block mask
 	db	0		;Extent mask
-	dw	224		;(Disk size) - 1
-	dw	95		;(Directory max) - 1
+	dw	242		;(Disk size) - 1
+	dw	63		;(Directory max) - 1
 	db	192		;Alloc0
 	db	0		;Alloc1
-	dw	24		;Check size
+	dw	16		;Check size
 	dw	2		;Offset
 
 ;	The translate table associated with the above DPB is "sdxlt" shown
@@ -213,5 +211,4 @@ alv0:	ds	36		;Allocation work area
 buff1:	ds	515
 endbuf:
 
-	end
-	
+	;; end
