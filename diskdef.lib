@@ -175,9 +175,9 @@ dirrem	set	0
 	db	extmsk ;extnt mask
 	dw	(dks)-1 ;disk size-1
 	dw	(dir)-1 ;directory max
-	db	dirblk  8 ;alloc0
+	db	dirblk >> 8 ;alloc0
 	db	dirblk & 0ffh ;alloc1
-	if	nul prm
+	if	~~strlen("PRM")
 	dw	(cks)/4 ;check size
 	else
 	dw	8000h+cksz ;permanent disk with check size

@@ -1029,7 +1029,6 @@ NEWTRKCMP:
 ;	RETURN ERROR FLAG IN ERFLAG
 ;
 ;-----------------------------------------------------------------------
-	IF	HARDSK
 
 WRITEHST:
 	LD	A,005H		;SETUP DMA FOR WRITE
@@ -1920,11 +1919,11 @@ HOME_TOGGLE:
 ; *********************************************************
 
 commonbase:
-	 jmp	coldstart
-swtuser: jmp	$-$
-swtsys:	 jmp	$-$
-pdisp:	 jmp	$-$
-xdos:	 jmp	$-$
+	 jp	coldstart
+swtuser: jp	$-$
+swtsys:	 jp	$-$
+pdisp:	 jp	$-$
+xdos:	 jp	$-$
 sysdat:	 dw	$-$
 COLDSTART:
 WARMSTART:
