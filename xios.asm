@@ -160,8 +160,8 @@ MEMSK	EQU	002H	; MEMORY SELECT MASK
 ;PDISP	EQU	 $-3
 ;XDOS	EQU	 PDISP-3
 
-	if	MPM20
-	jp	COMMONBASE
+	if	mpm20
+	jp	commonbase
 	else
 	JP	COLDSTART	;COLD START
 	endif
@@ -409,9 +409,9 @@ SELDSK:
 	LD	A,C		;LIMIT SELECT TO REAL OPTIO
 	CP	MAXDSK		;
 	JR	NC,SELERR	;  INVALID DRIVE
-	LD	A,E		; TEST FOR INITIAL SELECT
-	AND	1		;   E = 0  IS FIRST TIME
-	PUSH	AF		;
+;	LD	A,E		; TEST FOR INITIAL SELECT
+;	AND	1		;   E = 0  IS FIRST TIME
+;	PUSH	AF		;
 	LD	D,0		;
 	LD	E,C		; TRANSLATE TABLE
 	LD	HL,DTBLT	;  FOR LOGICAL TO PHYSICAL
@@ -478,7 +478,7 @@ SETDMA:
 
 	if	MPM20
 	inc	hl		;test for flush buffers
-	ld	a,1
+	ld	a,l
 	or	h
 	ret	nz		;HL = FFFFh is flush buffer
 	ld	hl,HSTWRT
@@ -639,7 +639,7 @@ SETMOD:
 	PUSH	AF		;
 	LD	(HL),B		;
 	PUSH	BC		;
-	LD	E,0		; INDICATE INITIAL SELECT
+;	LD	E,0		; INDICATE INITIAL SELECT
 	LD	C,B		; CALL DISK SELECT
 	CALL	SELDSK		;
 	POP	BC		;
@@ -1125,7 +1125,7 @@ HRW7:	CALL	WAIT0		;WAIT FOR COMPLETION
 	CPL			;CHANGE TOGGLE SO THAT HOMES ARE DONE EVERY OTHER RETRY
 	LD	(HOME_TOGGLE),A	;
 
-	JP	HRW1		;RETRY I/O
+	JR	HRW1		;RETRY I/O
 	ENDIF
 
 ;-----------------------------------------------------------------------
@@ -1362,6 +1362,7 @@ READSOFT:
 WRITESOFT:
 	LD	A,0FFH		;MASK FOR WRITE STATUS
 	LD	(MASK),A	;
+	CALL	MVDTB		;
 	LD	A,005H		;SETUP DMA FOR WRITE
 	LD	(DMAS3F),A	;
 	LD	A,0ACH		;WRITE COMMAND
@@ -1439,6 +1440,7 @@ FSECSET:
 CHECKIT:
 	CALL	CHECK_STAT	;CHECK STATUS OF I/O
 	LD	A,(ERFLAG)	;SETUP TO RETURN TO BDOS
+	CALL	Z,MVDFB
 	RET	Z		;EITHER OK OR PERMANENT ERROR
 	JR	LOAD_HEAD	;ERROR, JUST RETRY THIS SAME I/O
 
@@ -1485,6 +1487,7 @@ FRD	EQU	$		;LABEL
 	LD	A,(CMD)		;I/O COMMAND
 	CALL	FINTFIX		;CLEAR ANY PENDING INTERRUP
 ;				;AND ISSUE COMMAND
+FWT1:	CALL	FPYWAIT
 
 	IF	~~DMA
 	LD	HL,SAVE1	;SETUP TO REPLACE DATA
@@ -1832,13 +1835,13 @@ TEMPBUF	EQU	(DIRBUF-BASE)+256
 
 BEGDAT	EQU	$			;START OF BDOS AREAS
 ;DIRBUF:	DS	128	;OVERLAYS SYSTEMINIT CODE
-ALV0:	DS	31
+ALV0:	DS	32
 CSV0:	DS	32
-ALV1:	DS	31
+ALV1:	DS	32
 CSV1:	DS	32
-ALV2:	DS	31
+ALV2:	DS	32
 CSV2:	DS	32
-ALV3:	DS	31
+ALV3:	DS	32
 CSV3:	DS	32
 	IF	HARDSK
 ALV4:	DS	64
@@ -1954,14 +1957,6 @@ CNSTAT:
 	XOR	A		;SET TO SHOW STILL BUSY
 	RET			;
 ;
-;	WE WILL NOW PERFORM THE PRINT FUNCTION BUSY TEST
-;
-CNTBSY:
-	CALL	CNSTAT		;CHECK STATUS OF PRINTER
-	CP	0FFH		;READY ??
-	JR	NZ,CNTBSY		;NO, WAIT HERE
-	RET			;
-
 CLIST:
 	CALL	CNSTAT		;IS PRINTER READY NOW?
 	OR	A
@@ -2231,7 +2226,7 @@ POLCO1:				; RETURN 0FFH IF READY
 
 ;-----------------------------------------------------------------------
 ;
-;	POLL CONSOLE  # 2  OUTPUT
+;	POLL CONSOLE  # 2  INPUT
 ;
 ;-----------------------------------------------------------------------
 
@@ -2247,7 +2242,7 @@ PT2ST:				; TEST CONSOLE STATUS
 ;
 ;-----------------------------------------------------------------------
 ;
-;	POLL CONSOLE  # 2  INPUT
+;	CONSOLE  # 2  INPUT
 ;
 ;-----------------------------------------------------------------------
 ;
@@ -2264,7 +2259,7 @@ PT2IN1:	IN	A,(DATA2)		; READ CHARACTER
 ;
 ;-----------------------------------------------------------------------
 ;
-;	CONSOLE  # 2  INPUT
+;	CONSOLE  # 2  OUTPUT
 ;
 ;-----------------------------------------------------------------------
 ;
@@ -2336,7 +2331,7 @@ PT3IN1:	IN	A,(DATA3)		; READ CHARACTER
 ;
 ;-----------------------------------------------------------------------
 ;
-;	CONSOLE  # 3  INPUT
+;	CONSOLE  # 3  OUTPUT
 ;
 ;-----------------------------------------------------------------------
 ;
@@ -2357,7 +2352,7 @@ PT3OUT1:
 ;
 ;-----------------------------------------------------------------------
 ;
-;	POLL CONSOLE  # 3  INPUT
+;	POLL CONSOLE  # 3  OUTPUT
 ;
 ;-----------------------------------------------------------------------
 ;
@@ -2523,7 +2518,7 @@ TIMERINT:
 				;  DELAYED PROCESS(ES)
 	JR	Z,NOTICKN
 	LD	C,FLAGST
-	LD	E,l
+	LD	E,1
 	CALL	XDOS		; SET FLAG #1 EACH TICK
 NOTICKN:
 	LD	HL,CNTX
@@ -2558,7 +2553,6 @@ NOTICKN:
 	LD	(FPYTCNT),HL	;
 
 NOT1SEC:
-
 INTDONE:
 	XOR	A
 	LD	(PREEMP),A	; CLEAR PREEMPTED FLAG
@@ -2760,7 +2754,7 @@ MVDTB:
 	LD	BC,128		; 128 BYTES
 	LDIR			;
 	jp	SWTSYS		;switch system back in
-	RET			;
+;	RET			;
 
 MVDFB:	PUSH	AF		;MOVE DATA FROM FLOPPY BUF
 	LD	A,(CMD)		;
@@ -2861,7 +2855,7 @@ DONTFILL:
 	LD	BC,4		;  4 MODE BYTES
 	LDIR			;
 	ld	hl,(LDRBIOSBASE+MISC_PARAMS_OFFSET)
-	LD	HL,(17BBH)		; GET MISC. PARAMETERS
+;;;;;	LD	HL,(17BBH)		; GET MISC. PARAMETERS
 	LD	(MPARMS),HL		;
 	LD	A,(MPARMS)		; NOW TEST FOR CENTRONICS P
 	AND	2		;
@@ -2887,7 +2881,7 @@ MODESET:
 	CALL	XETMOD		;SET MODE
 	POP	BC		;
 	DEC	C		;END OF LIST YET ??
-	JP	MODESET		;SET MODE FOR ALL DRIVES
+	JP	P,MODESET	;SET MODE FOR ALL DRIVES
 	CALL	SDCONF		;SET DISK CONFIGURATION
 
 	LD	BC,80H
