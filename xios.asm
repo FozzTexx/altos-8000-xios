@@ -1027,7 +1027,6 @@ NEWTRKCMP:
 ;	RETURN ERROR FLAG IN ERFLAG
 ;
 ;-----------------------------------------------------------------------
-	IF	HARDSK
 
 WRITEHST:
 	MVI	A,005H		;SETUP DMA FOR WRITE
