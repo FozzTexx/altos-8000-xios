@@ -59,11 +59,11 @@
 TRUE	set	0FFFFH	;VALUE FOR TRUE
 FALSE	set	~~TRUE	;VALUE FOR FALSE
 
-MDISK	equ	FALSE	;Virtual Disk cond asm bool
-MPM20	equ	TRUE	;MP/M 2.0 cond asm boolean
+mdisk	equ	false	;Virtual Disk cond asm bool
+mpm20	equ	true 	;MP/M 2.0 cond asm boolean
 
 ;----------------------------------------------------------
-LDRBIOSBASE	equ	1700h	; for M
+ldrbiosbase	equ	1700h	; for M
 
 DENSITY_MASK_OFFSET	equ	37h ;density mask offset from LDRBI
 MISC_PARAMS_OFFSET	equ	0bbh ;misc. parameters offset from L
@@ -103,8 +103,8 @@ RELOC	EQU	TRUE		;RELOCATABLE VERSION ??
 
 ;----------------------------------------------------------
 
-	if	MDISK
-MAXDSK	equ	13
+	if	mdisk
+maxdsk	equ	13
 	else
 	IF	HARDSK
 MAXDSK	EQU	12		;MAXIMUM NUMBER OF LOGICAL
@@ -364,7 +364,7 @@ DPEB:	DW	0000H,0000H	;TRANSLATE TABLE AND WORK AREA
 
 	ENDIF
 
-	if	MDISK
+	if	mdisk
 ;		Virtual	disk parameter header
 
 DPEC:	DW	0000H,0000H	;TRANSLATE TABLE AND WORK AREA
@@ -383,7 +383,7 @@ MODL1:	DW	XLT1,0000H	;MODEL DPE FOR MODE 1
 	DW	0000H,0000H
 	DW	DIRBUF,DPB1
 
-MODL2:	DW	XLT2 ,0000H	;MODEL DPE FOR MODE 2
+MODL2:	DW	XLT2,0000H	;MODEL DPE FOR MODE 2
 	DW	0000H,0000H
 	DW	DIRBUF,DPB2
 
@@ -448,7 +448,7 @@ CHKHRD:	LD	A,(HL)		; RESTORE SELECT BYTE
 SELSDP:
 	LD	A,C		;
 
-	if	MDISK
+	if	mdisk
 VIRTUAL:
 	endif
 
@@ -519,7 +519,7 @@ SETDEN:
 	LD	(HL),A		;RESTORE MASK IN TABLE
 	RET			;RETURN TO CALLER
 
-	if	MDISK
+	if	mdisk
 MREADSECTOR:
 	call	compbank	;compute bank
 	di
@@ -539,11 +539,11 @@ MREADSECTOR:
 	xor	a
 	ret
 
-MBANKNO		db	0
-ADDROFF		dw	0
-LOCALBUF	ds	128
+mbankno		db	0
+addroff		dw	0
+localbuf	ds	128
 
-COMPBANK :
+compbank:
 	ld	a,(newtrk)
 	ld	h,a
 	and	0fh	;save track rem 16
@@ -573,7 +573,7 @@ COMPBANK :
 	endif
 
 READ:
-	if	MDISK
+	if	mdisk
 	LD	A,(NEWDSK)
 	CP	12		;VIRTUAL DISK ?
 	JP	Z,MREADSECTOR
@@ -584,8 +584,8 @@ READ:
 	JP	C,READSOFT	;FLOPPY DISK DRIVE....
 	JP	READHARD	;HARD DISK I/O
 
-	if	MDISK
-MWRITESECTOR:
+	if	mdisk
+mwritesector:
 	call	compbank
 	lhid	dmaadr
 	ld	de,localbuf
@@ -604,7 +604,7 @@ MWRITESECTOR:
 	xor	a
 	ret
 
-CHGBANK:
+chgbank:
 	ld	a,(mbankno)
 	ral
 	ral
@@ -616,7 +616,7 @@ CHGBANK:
 	endif
 
 WRITE:
-	if	MDISK
+	if	mdisk
 	ld	a,(newdsk)
 	cp	12
 	jp	z,mwritesector
@@ -1029,6 +1029,7 @@ NEWTRKCMP:
 ;	RETURN ERROR FLAG IN ERFLAG
 ;
 ;-----------------------------------------------------------------------
+	IF	HARDSK
 
 WRITEHST:
 	LD	A,005H		;SETUP DMA FOR WRITE
@@ -1691,7 +1692,7 @@ FINTFIX:
 
 	RET
 
-	if	~~MPM20
+	if	~~mpm20
 FPYTIME:
 	DW	0
 
@@ -1723,7 +1724,7 @@ DEL2:	NOP			;INSTRUCTIONS TO FILL IN TIME
 ;*   OVERWRITTEN BY DIRBUF & FPYBUF
 ;********************************************
 
-	if	~~MPM20
+	if	~~mpm20
 DIRBUF	EQU	$
 	endif
 
@@ -1826,15 +1827,15 @@ XETSEL:	CALL	SETDEN		;SET DENSITY BASED ON LOW BIT
 ;
 ;-----------------------------------------------------------------------
 
-	if	MPM20
-;tempbuf	equ	(DIRBUF-base)+128
+	if	mpm20
+;tempbuf	equ	(dirbuf-base)+128
 	else
 TEMPBUF	EQU	(DIRBUF-BASE)+256
 	ORG TEMPBUF+((INITEND-BASE)/TEMPBUF)*((INITEND-BASE
 	endif
 
 BEGDAT	EQU	$			;START OF BDOS AREAS
-;DIRBUF:	DS	128	;OVERLAYS SYSTEMINIT CODE
+;DIRBUF:	DS	128 	;OVERLAYS SYSTEMINIT CODE
 ALV0:	DS	32
 CSV0:	DS	32
 ALV1:	DS	32
@@ -1862,13 +1863,13 @@ ALVB:	DS	36
 CSVB:	DS	0
 	endif
 
-	if	MDISK
+	if	mdisk
 ALVC:	DS	32			;VIRTUAL DISK
 CSVC:	DS	0
 	endif
 
-	if	~~MPM20
-	if	HARDSK
+	if	~~mpm20
+	if	hardsk
 	DS	1			;MUST PRECEDE HSTBU
 HSTBUF:	DS	1024			;HOST BUFFER AREA
 	DS	1			;MUST FOLLOW HSTBUF
@@ -1910,7 +1911,7 @@ HOME_TOGGLE:
 	DB	000H			;INDICATOR TO TELL HARD DISK ERROR RECOVERY
 ;					;.. IF HOME SHOULD BE DONE BEFORE NEXT I/O
 
-	if	MPM20
+	if	mpm20
 
 ; *********************************************************
 ; *
@@ -1918,13 +1919,13 @@ HOME_TOGGLE:
 ; *
 ; *********************************************************
 
-COMMONBASE:
-	 jp	COLDSTART
-SWTUSER: jp	$-$
-SWTSYS:	 jp	$-$
-PDISP:	 jp	$-$
-XDOS:	 jp	$-$
-SYSDAT:	 dw	$-$
+commonbase:
+	 jmp	coldstart
+swtuser: jmp	$-$
+swtsys:	 jmp	$-$
+pdisp:	 jmp	$-$
+xdos:	 jmp	$-$
+sysdat:	 dw	$-$
 COLDSTART:
 WARMSTART:
 	LD	C,0			; SEE SYSTEM INIT
@@ -1932,7 +1933,7 @@ WARMSTART:
 					; FOR COMPATIBILITY WITH CP
 	JP	XDOS			; SYSTEM RESET, TERMINATE P
 
-RTNEMPTY:
+rtnempty:
 	xor	a
 	ret
 
@@ -2070,7 +2071,7 @@ TBLJMP:				; COMPUTE AND JUMP TO HANDLER
 
 DATA0	EQU	01CH		;CONSOLE #0 DATA
 STS0	EQU	DATA0+1		;CONSOLE #0 STATUS
-DATA1	equ	02CH		;CONSOLE #1 DATA
+DATA1	EQU	02CH		;CONSOLE #1 DATA
 STS1	EQU	DATA1+1		;CONSOLE #1 STATUS
 DATA2	EQU	02EH		;CONSOLE #2 DATA
 STS2	EQU	DATA2+1		;CONSOLE #2 STATUS
@@ -2612,7 +2613,7 @@ SVDRET:	DW	0	; SAVED RETURN DURING INT HNDL
 TICKN:	DB	0	; TICKING BOOLEAN,TRUE = DELAYED
 PREEMP:	DB	0	; PREEMPTED BOOLEAN
 
-	if	MPM20
+	if	mpm20
 FPYTIME:
 	DW	0
 
@@ -2664,7 +2665,7 @@ DPB2	EQU	$		;VERSION 1.4 ALTOS DOUBLE D
 	DW	2		;OFFSET TO START TRACK
 
 	IF	HARDSK
-	if	MPM20
+	if	mpm20
 DPB3:	DISKDEF	3,0,127,,16384,512,512,0,1,,0
 
 DPB4:	DISKDEF	4,0,127,,16384,512,512,0,513,,0
@@ -2684,7 +2685,7 @@ DPB6:	DISKDEF	6,0,127,,16384,288,512,0,513
 
 	ENDIF
 
-	if	MDISK
+	if	mdisk
 DPB7	EQU	$		;VIRTUAL DISK
 	DW	24		;SECTORS PER TRACK
 	DB	3		;BLOCK SHIFT
@@ -2702,22 +2703,22 @@ DPB7	EQU	$		;VIRTUAL DISK
 ;	MOVE SUBROUTINE
 ;
 
-	if	HARDSK
+	if	hardsk
 RWMOVE:
 	push	de
 	push	hl
-	call	SWTUSER		;switch in user bank
+	call	swtuser		;switch in user bank
 	pop	hl
 	pop	de
 	ld	bc,128
 	LDIR			;MOVE DATA TO/FROM BUFFER
-	call	SWTSYS		;switch system back in
+	call	swtsys		;switch system back in
 ;
 ;	DATA HAS BEEN MOVED TO/FROM HOST BUFFER
 ;
 	LD	A,(WRTYPE)		;WRITE TYPE ??
 
-	if	MPM20
+	if	mpm20
 	and	WRDIR		;TO DIRECTORY ??
 	JR	Z,RWEND		;NO, JUST END UP HERE
 	else
@@ -2753,7 +2754,7 @@ MVDTB:
 	LD	DE,FPYBUF	;
 	LD	BC,128		; 128 BYTES
 	LDIR			;
-	jp	SWTSYS		;switch system back in
+	jp	swtsys		;switch system back in
 ;	RET			;
 
 MVDFB:	PUSH	AF		;MOVE DATA FROM FLOPPY BUF
@@ -2762,12 +2763,12 @@ MVDFB:	PUSH	AF		;MOVE DATA FROM FLOPPY BUF
 	JR	NZ,MVDFX		; NO - BYPAS MOVE
 	LD	HL,(DMAADR)		;
 	push	hl
-	call	SWTUSER	;switch in user bank,
+	call	swtuser	;switch in user bank,
 	pop	de	;   cannot access non-common BNKXIO
 	LD	HL,FPYBUF	;
 	LD	BC,128		; 128 BYTES
 	LDIR			;
-	call	SWTSYS		;switch system back in
+	call	swtsys		;switch system back in
 MVDFX:	POP	AF		;
 	RET			;
 
@@ -2778,9 +2779,9 @@ HSTBUF:	DS	1024			;HOST BUFFER AREA
 	DS	1			;MUST FOLLOW HSTBUF
 	ENDIF
 
-	if	MPM20
-DIRBUF	equ	$
-FPYBUF	equ	DIRBUF+128
+	if	mpm20
+dirbuf	equ	$
+fpybuf	equ	dirbuf+128
 	endif
 
 SYSTEMINIT:
@@ -2841,7 +2842,7 @@ FILL:
 	out	(09h),a
 	ld	(hl),0e5h
 	ldir
-DONTFILL:
+dontfill:
 	endif
 	LD	A,002H		; SELECT BANK 0
 	CALL	STMVTR		; SET UP VECTORS
@@ -2889,8 +2890,8 @@ MODESET:
 
 	push	hl
 
-	if	MPM20
-	ld	hl,(SYSDAT)
+	if	mpm20
+	ld	hl,(sysdat)
 	ld	l,7
 	ld	a,(hl)
 	else
@@ -2935,10 +2936,10 @@ STMVTR:
 SVDJT:	DS	2	; SAVED DIRECT JUMP TABLE ADDRESS
 SVDBPA:	DS	2	; SAVED BREAK POINT ADDRESS
 
-	if	MPM20
-XIOSEND	equ	$
-FDBUF	equ	(DIRBUF-BASE) +256
-	org FDBUF+((XIOSEND-BASE)/FDBUF)*((XIOSEND-BASE)-FDBUF)
+	if	mpm20
+xiosend	equ	$
+fdbuf	equ	(dirbuf-base) +256
+	org fdbuf+((xiosend-base)/fdbuf)*((xiosend-base)-fdbuf)
 	db	0
 	endif
 
