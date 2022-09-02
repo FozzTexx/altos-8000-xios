@@ -1,12 +1,12 @@
-;	CP/M 2.0 disk re-definition library
+;	MP/M II V2.0 disk re-definition library
 ;
-;	Copyright (c) 1979
+;	Copyright (c) 1979, 1980, 1981
 ;	Digital Research
 ;	Box 579
 ;	Pacific Grove, CA
 ;	93950
 ;
-;	CP/M logical disk drives are defined using the
+;	MP/M II logical disk drives are defined using the
 ;	macros given below, where the sequence of calls
 ;	is:
 ;
@@ -18,11 +18,11 @@
 ;	endef
 ;
 ;	where n is the number of logical disk drives attached
-;	to the CP/M system, and parameter-list-i defines the
+;	to the MP/M II system, and parameter-list-i defines the
 ;	characteristics of the ith drive (i=0,1,...,n-1)
 ;
 ;	each parameter-list-i takes the form
-;		dn,fsc,lsc,[skf],bls,dks,dir,cks,ofs,[0]
+;		dn,fsc,lsc,[skf],bls,dks,dir,cks,ofs,[k16],[prm]
 ;	where
 ;	dn	is the disk number 0,1,...,n-1
 ;	fsc	is the first sector number (usually 0 or 1)
@@ -33,14 +33,15 @@
 ;	dir	is the number of directory elements (word)
 ;	cks	is the number of dir elements to checksum
 ;	ofs	is the number of tracks to skip (word)
-;	[0]	is an optional 0 which forces 16K/directory entry
+;	k16	is an optional 0 which forces 16K/directory entry
+;	prm	is an optional 0 which marks drive as permanent
 ;
 ;	for convenience, the form
 ;		dn,dm
 ;	defines disk dn as having the same characteristics as
 ;	a previously defined disk dm.
 ;
-;	a standard four drive CP/M system is defined by
+;	a standard four drive MP/M II system is defined by
 ;		disks	4
 ;		diskdef	0,1,26,6,1024,243,64,64,2
 ;	dsk	set	0
@@ -111,7 +112,7 @@ gcdn	set	gcdr
 	endm
 	endm
 ;
-diskdef	macro	dn,fsc,lsc,skf,bls,dks,dir,cks,ofs,k16
+diskdef	macro	dn,fsc,lsc,skf,bls,dks,dir,cks,ofs,k16,prm
 ;;	generate the set statements for later tables
 	if	nul lsc
 ;;	current disk dn same as previous fsc
@@ -120,13 +121,14 @@ als&dn	equ	als&fsc	;same allocation vector size
 css&dn	equ	css&fsc	;same checksum vector size
 xlt&dn	equ	xlt&fsc	;same translate table
 	else
+cksz	set	(cks)/4
 secmax	set	lsc-(fsc)	;;sectors 0...secmax
 sectors	set	secmax+1;;number of sectors
 als&dn	set	(dks)/8	;;size of allocation vector
 	if	((dks) mod 8) ne 0
 als&dn	set	als&dn+1
 	endif
-css&dn	set	(cks)/4	;;number of checksum elements
+css&dn	set	cksz	;;number of checksum elements
 ;;	generate the block shift value
 blkval	set	bls/128	;;number of sectors/block
 blkshf	set	0	;;counts right 0's in blkval
@@ -185,7 +187,11 @@ dirrem	set	0
 	ddw	%(dir)-1,<;directory max>
 	ddb	%dirblk shr 8,<;alloc0>
 	ddb	%dirblk and 0ffh,<;alloc1>
+	if	nul prm
 	ddw	%(cks)/4,<;check size>
+	else
+	ddw	8000h+cksz,<;permanent disk with check size>
+	endif
 	ddw	%ofs,<;offset>
 ;;	generate the translate table, if requested
 	if	nul skf
