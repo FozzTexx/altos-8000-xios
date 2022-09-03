@@ -1,0 +1,33 @@
+	ifndef	_dmabpb
+	
+;	Offset equates for BPT (Buffer Pool Table) - 10 Dec 1980
+
+_dmabpb	equ	0		;Address of special BPB for user's "DMA"
+;				;.. area.
+
+;				;Offset 2 not currently used
+numbuf	equ	3		;Number of buffers in buffer pool
+
+buflen	equ	4		;Length of one buffer from buffer pool
+
+
+;	Length of one BPB (Buffer Pointer Block)
+bpblen	equ	10		;This value not contained within any block
+
+
+;	Offset equates for BPB (Buffer Pointer Block)
+
+_bppdb	equ	0		;Address of PDB for this BPB
+_buf	equ	2		;Address of buffer
+
+;				;Disk address for the buffer's data
+bpcyl	equ	4		;Cylinder number
+bphead	equ	6		;Head number
+bpsec	equ	7		;Physical sector number
+
+bpmsk	equ	8		;Bank mask for buffer
+
+bpflgs	equ	9		;Various flag bits
+bpfwrt	equ	0		;Flag bit: 1 = data must be written
+
+	endif	; _dmabpb

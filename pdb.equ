@@ -1,0 +1,68 @@
+	ifndef	_dgb
+	
+;	Offset equates for the PDB (Physical Device Block) -   3 Mar 1981
+
+_dgb	equ	0		;Address of DGB
+_nxtpdb	equ	2		;Address of next PDB
+_1stldb	equ	4		;Address of first LDB
+
+devtyp	equ	6		;Device type code.  High order 4 bits
+;				;.. show major device type.
+dtflpy	equ	000h		;Device type - floppy disk
+dthard	equ	010h		;Device type - hard disk
+
+selmsk	equ	7		;Select mask for this device
+
+pdflgs	equ	8		;Various flag bits
+pdfdev	equ	0		;Flag bit #0, device not avail/avail (0/1)
+pfmdev	equ	001h		;Mask for flag bit #0
+pdfhome	equ	1		;Flag bit #1, home not done/done (0/1)
+pfmhome	equ	002h		;Mask for flag bit #1
+pdfbuf	equ	2		;Flag bit #2, location of buffer
+;				;.. 0 = Buffer from buffer pool
+;				;.. 1 = Buffer from user's area
+pfmbuf	equ	004h		;Mask for flag bit #2
+pdfsid	equ	3		;Flag bit #3, number of sides on floppy disk
+;				;.. has not/has (0/1) been determined
+pfmsid	equ	008h		;Mask for flag bit #3
+
+modenum	equ	9		;Mode number for floppy disk drive
+;				;.. Not used for hard disk
+steprt	equ	10		;Step rate mask for floppy disk drive
+;				;.. Not used for hard disk
+
+;***				;Offset 11 not currently used
+
+;***				;Offset 12 and 13 not currently used
+
+pddata	equ	14		;Length of data bytes in physical sector
+pdshft	equ	16		;Logical to physical sector shift factor
+pdloff	equ	17		;Logical sector offset mask
+
+pdbrsv	equ	18		;Number of bytes in buffer preceding data
+pdfsec	equ	19		;Sector number of first sector on any track
+
+pdcyld	equ	20		;Number of cylinders per device
+pdhedc	equ	22		;Number of heads per cylinder
+pdsect	equ	23		;Number of sectors per track
+
+pdcyl	equ	24		;Current cylinder (or track) number
+pdhead	equ	26		;Current head (or side) number
+pdsec	equ	27		;Current sector number
+
+pdterr	equ	28		;Count of temporary I/O errors
+pdperr	equ	30		;Count of permanent I/O errors
+
+pderflg	equ	32		;Flag bits for I/O errors
+pdertp	equ	0		;Flag bit for most recent error type
+;				;.. 0 = temporary, 1 = permanent
+pderrw	equ	1		;Flag bit for most recent error type
+;				;.. 0 = read, 1 = write
+
+pderst	equ	33		;Status from most recent I/O error
+pdercyl	equ	34		;Cylinder number of most recent I/O error
+pderhd	equ	36		;Head number for most recent I/O error
+pdersc	equ	37		;Physical sector number for most recent I/O
+;				;.. error
+
+	endif	; _dgb

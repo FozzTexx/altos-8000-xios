@@ -1,0 +1,18 @@
+	ifndef	_nxtdgb
+
+;	Offset equates for DGB (Device Group Block) - 3 Dec 1980
+
+_nxtdgb	equ	0		;Address of next DGB
+_1stpdb	equ	2		;Address of first PDB for this device group
+dgslmsk	equ	4		;Select mask for currently selected device
+;				;Offset 5 not currently used
+
+_drsel	equ	6		;Address of drive select routine
+_home	equ	8		;Address of home routine
+_seek	equ	10		;Address of seek routine
+_head	equ	12		;Address of head select routine
+_sec	equ	14		;Address of sector select routine
+_read	equ	16		;Address of read routine
+_write	equ	18		;Address of write routine
+
+	endif	; _nxtdgb

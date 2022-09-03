@@ -1,0 +1,10 @@
+	ifndef	_pdb
+	
+;	Offset equates for LDB (Logical Device Block) - 23 Nov 1980
+
+_pdb	equ	0		;Address of PDB
+_nxtldb	equ	2		;Address of next LDB
+_dph	equ	4		;Address of DPH (Disk Parameter Header)
+t0off	equ	6		;Track offset for this logical device
+
+	endif	; _pdb
