@@ -20,7 +20,12 @@ def assemble(path, cpu, listing=None):
     cmd.extend(["-L", listing])
   cmd.append(path)
 
-  p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+  try:
+    p = subprocess.Popen(cmd, stderr=subprocess.PIPE)
+  except FileNotFoundError:
+    print("%s: Command not found" % (cmd[0]))
+    return -1
+    
   while True:
     line = p.stderr.readline()
     if not line:
@@ -46,7 +51,7 @@ def p2bin(path):
   tf.close()
   base, ext = os.path.splitext(path)
   cmd = ["p2bin", "-l", "0x00", base + ".p", tf.name]
-  subprocess.run(cmd)
+  subprocess.call(cmd)
   with open(tf.name, "rb") as f:
     data = f.read()
   os.unlink(tf.name)

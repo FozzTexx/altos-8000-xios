@@ -163,45 +163,45 @@ MEMSK	EQU	002H	; MEMORY SELECT MASK
 	if	mpm20
 	jp	commonbase
 	else
-	JP	COLDSTART	;COLD START
+	JP	debuga;COLDSTART	;COLD START
 	endif
 WBOTE:
-	JP	WARMSTART	;WARM START
-	JP	CONST		;CONSOLE STATUS
+	JP	debugb;WARMSTART	;WARM START
+	JP	CONST		;CONSOLE STATUS - called before banner 2
 	JP	CONIN		;CONSOLE CHARACTER IN
-	JP	CONOUT		;CONSOLE CHARACTER OUT
-	JP	LIST		;LIST CHARACTER OUT - THIS
+	JP	CONOUT		;CONSOLE CHARACTER OUT - called before banner 6
+	JP	debugf;LIST		;LIST CHARACTER OUT - THIS
 ;				;  "CLIST" IF SETUP PROGRAM
 ;				;  PARALLEL PRINTER PORT
 
-	JP	RTNEMPTY	;PUNCH NOT IMPLEMENTED
-	JP	RTNEMPTY	;READER NOT IMPLEMENTED
-	JP	HOMEIT		;MOVE HEAD TO HOME
-	JP	SELDSK		;SELECT DISK
-	JP	SETTRK		;SET TRACK NUMBER
-	JP	SETSEC		;SET SECTOR NUMBER
-	JP	SETDMA		;SET DMA ADDRESS
-	JP	debugd;READ		;READ DISK
-	JP	debugb;WRITE		;WRITE DISK
-	JP	POLLPT		;LIST STATUS
-	JP	SECTRAN		;SECTOR TRANSLATE
+	JP	debugg;RTNEMPTY	;PUNCH NOT IMPLEMENTED
+	JP	debugh;RTNEMPTY	;READER NOT IMPLEMENTED
+	JP	HOMEIT		;MOVE HEAD TO HOME - called after banner 1
+	JP	SELDSK		;SELECT DISK - called before banner 1
+	JP	SETTRK		;SET TRACK NUMBER - called after banner 2
+	JP	SETSEC		;SET SECTOR NUMBER - called after banner 4
+	JP	SETDMA		;SET DMA ADDRESS - called before banner 4
+	JP	READ		;READ DISK - called after banner 5
+	JP	debugo;WRITE		;WRITE DISK
+	JP	debugp;POLLPT		;LIST STATUS
+	JP	SECTRAN		;SECTOR TRANSLATE - called after banner 3
 
 ;	EXTENDED I/O SYSTEM JUMP VECTOR
 
-	JP	SELMEMORY	; SELECT MEMORY
-	JP	POLLDEVICE	; POLL DEVICE
-	JP	debugc;STARTCLOCK	; START CLOCK
-	JP	debugd;STOPCLOCK	; STOP CLOCK
+	JP	SELMEMORY	; SELECT MEMORY - called before banner 3
+	JP	POLLDEVICE	; POLL DEVICE - called before banner 7
+	JP	debugt;STARTCLOCK	; START CLOCK
+	JP	debugu;STOPCLOCK	; STOP CLOCK
 	JP	EXITREGION	; EXIT REGION
-	JP	MAXCONSOLE	; MAXIMUM CONSOLE NUMBER
+	JP	MAXCONSOLE	; MAXIMUM CONSOLE NUMBER - called before banner 5
 
 	JP	SYSTEMINIT	; SYSTEM INITIALIZATION
 	NOP			; NO JMP HERE
 	NOP			; FOR MP/M DELAY
 	NOP			;
 
-	JP	debuga;SETMOD		;ROUTINE TO SET DISK MODE
-	JP	debugb;RETMOD		;ROUTINE TO RETURN CURRENT
+	JP	debugw;SETMOD		;ROUTINE TO SET DISK MODE
+	JP	debugx;RETMOD		;ROUTINE TO RETURN CURRENT
 
 	if	~~mpm20
 COLDSTART:
@@ -573,15 +573,18 @@ compbank:
 	endif
 
 READ:
+;	call	regdump
 	ld	a,1
 	ret
+	;; jp	debugf
+	;; call	regdump
+	;; jp	$
 	if	mdisk
 	LD	A,(NEWDSK)
 	CP	12		;VIRTUAL DISK ?
 	JP	Z,MREADSECTOR
 	endif
 
-	jp	debugd
 	CALL	RETMOD		;WHAT TYPE OF I/O ??
 	CP	003H		;
 	JP	C,READSOFT	;FLOPPY DISK DRIVE....
@@ -690,7 +693,6 @@ SMERR:	POP	AF		;
 	RET			;RETURN TO CALLER
 
 RETMOD:
-	jp	debugc
 	LD	DE,MODE		;START OF MODE BYTES
 	LD	HL,(NEWDSK)	;NEXT DRIVE FOR I/O
 	LD	H,000H		;RESET FOR SINGLE BYTE QUAN
@@ -782,9 +784,6 @@ HOME2:	CALL	WAIT0		;WAIT UNTIL I/O COMPLETE
 ;----------------------------------------------------------
 
 READHARD:
-	jp	debugb
-	ld	a,1
-	ret
 	IF	HARDSK
 	XOR	A		;RESET UNALLOCATED COUNT
 	LD	(UNACNT),A	;
@@ -1359,9 +1358,6 @@ STRN2:
 ;-----------------------------------------------------------------------
 
 READSOFT:
-	jp	debuga
-	ld	a,1
-	ret
 	LD	A,09FH		;MASK FOR READ STATUS
 	LD	(MASK),A	;
 	LD	A,001H		;SETUP DMA FOR READ
@@ -2028,161 +2024,6 @@ HDSTFLG:
 ;
 ;-----------------------------------------------------------------------
 
-statpt	equ	01dh		;SIO status port for console
-datapt	equ	01ch		;SIO data port for console
-eom	equ	'$'		;end of message indicator
-	
-	;; Write character in C to console 0
-dbgout:
-	ld	a,010h		;reset EXT/STATUS interrupts
-	out	(statpt),a	;issue command to Z80-SIO
-	in	a,(statpt)	;read status
-	and	00ch		;look for DCD (wired to DTR) and xmit ready
-	cp	00ch		;both must be set
-	jr	nz,dbgout	;if not...branch
-
-	ld	a,c
-	out	(datapt),a	;send data character on its way
-	ret			;exit
-
-puthex4:
-	push	bc
-	ld	c,b
-	call	puthex2
-	pop	bc
-puthex2:
-	push	bc
-	sra	c
-	sra	c
-	sra	c
-	sra	c
-	call	puthex
-	pop	bc
-puthex:
-	push	bc
-	push	af
-	ld	a,c
-	and	a,0Fh
-	add	a,'0'
-	cp	a,'9'+1
-	jp	c,isdig
-	add	a,'A'-'9'-1
-isdig:	ld	c,a
-	call	dbgout
-	pop	af
-	pop	bc
-	ret
-
-putmsg:
-	push	af
-	push	bc
-mnext:	ld	a,(hl)
-	cp	a,eom
-	jp	z,mdone
-	ld	c,a
-	call	dbgout
-	inc	hl
-	jp	mnext
-mdone:	pop	bc
-	pop	af
-	ret
-
-;; newln:	db	"\r\n$"
-;; regmsg:	db	"\r\nAF: $  BC: $  DE: $  HL: $\r\nIX: $IY: $SP: $RT: "
-;; rgsave:	dw	0
-;; 	dw	0
-;; regdump:
-;; 	jp	debugf
-;; 	ld	(rgsave),hl	; Save HL to restore when done
-;; 	pop	hl		; Get return address
-;; 	push	hl		; put it back
-;; 	push	bc		; Save BC to restore when done
-;; 	push	de		; Save DE to restore when done
-
-;; 	;; Put all registers on stack to print them
-;; 	push	hl		; Push return address
-
-;; 	push	af		; Save flags before something mangles them
-;; 	pop	hl
-;; 	ld	(rgsave+2),hl
-
-;; 	ld	hl,0		; Push SP
-;; 	ccf
-;; 	add	hl,sp
-;; 	push	hl
-	
-;; 	ld	hl,(rgsave)	; Push saved HL
-;; 	push	hl
-;; 	push	iy
-;; 	push	ix
-;; 	push	hl
-;; 	push	de
-;; 	push	bc
-;; 	ld	hl,(rgsave+2)	; Push saved AF
-;; 	push	hl
-
-;; 	;; Print everything saved to stack
-;; 	ld	d,8
-;; 	ld	hl,regmsg
-;; regprnt:
-;; 	call	putmsg
-;; 	inc	hl		; Move past '$'
-;; 	pop	bc
-;; 	call	puthex4
-;; 	dec	d
-;; 	jr	nz,regprnt
-
-;; 	ld	hl,newln
-;; 	call	putmsg
-	
-;; 	pop	de		; Restore DE
-;; 	pop	bc		; Restore BC
-;; 	ld	hl,(rgsave)	; Restore HL
-;; 	ret
-	
-dbgmsga:	db	" debug A\r\n$"
-dbgmsgb:	db	" debug B\r\n$"
-dbgmsgc:	db	" debug C\r\n$"
-dbgmsgd:	db	" debug D\r\n$"
-dbgmsge:	db	" debug E\r\n$"
-dbgmsgf:	db	" debug F\r\n$"
-
-debuga:	
-	di
-	ld	hl,dbgmsga
-	call	putmsg
-	jp	$
-debugb:	
-	di
-	ld	hl,dbgmsgb
-	call	putmsg
-	jp	$
-debugc:	
-	di
-	ld	hl,dbgmsgc
-	call	putmsg
-	jp	$
-debugd:	
-	di
-	ld	hl,dbgmsgd
-	call	putmsg
-	jp	$
-debuge:	
-	di
-	ld	hl,dbgmsge
-	call	putmsg
-	jp	$
-debugf:	
-	di
-	ld	hl,dbgmsgf
-	call	putmsg
-	jp	$
-debug:	
-	di
-	ld	hl,dbgmsga
-	call	putmsg
-	jp	$
-	
 CONST:				; CONSOLE STATUS
 	CALL	PTBLJMP		; COMPUTE AND JUMP TO HNDLR
 	DW	PT0ST		; CONSOLE #0 STATUS ROUTINE
@@ -3099,6 +2940,8 @@ STMVTR:
 SVDJT:	DS	2	; SAVED DIRECT JUMP TABLE ADDRESS
 SVDBPA:	DS	2	; SAVED BREAK POINT ADDRESS
 
+	include "debug.asm"
+	
 	if	mpm20
 xiosend	equ	$
 fdbuf	equ	(dirbuf-base) +256

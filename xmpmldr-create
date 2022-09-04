@@ -1,0 +1,27 @@
+#!/bin/bash
+
+XIOSDIR=~/BTSync/Antiques/Altos/xios
+DISK="-f z80pack-hd disks/drivei.dsk"
+
+cpmrm ${DISK} 0:ldrbios.hex
+cpmcp -t ${DISK} ${XIOSDIR}/ldrbios.hex 0:
+
+expect << EOF
+spawn ./cpm2
+expect "A>"
+send "I:\r"
+expect "I>"
+send "ddt mpmldr.com\r"
+expect -- "-"
+send "ildrbios.hex\r"
+expect -- "-"
+send "r\r"
+expect -- "-"
+send "g0\r"
+expect "I>"
+send "save 29 xmpmldr.com\r"
+expect "I>"
+send "a:bye\r"
+EOF
+
+cpmcp ${DISK} 0:xmpmldr.com ${XIOSDIR}/.
