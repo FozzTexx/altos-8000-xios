@@ -573,7 +573,7 @@ compbank:
 	endif
 
 READ:
-;	call	regdump
+	call	regdump
 	ld	a,1
 	ret
 	;; jp	debugf

@@ -73,26 +73,25 @@ regdump:
 	push	de		; Save DE to restore when done
 
 	;; Put all registers on stack to print them
-	push	hl		; Push return address
+	push	hl		; Push RT 7 - return address
 
 	push	af		; Save flags before something mangles them
 	pop	hl
 	ld	(rgsave+2),hl
 
-	ld	hl,0		; Push SP
+	ld	hl,0
 	ccf
 	add	hl,sp
-	push	hl
+	push	hl		; Push SP 6
 	
-	ld	hl,(rgsave)	; Push saved HL
-	push	hl
-	push	iy
-	push	ix
-	push	hl
-	push	de
-	push	bc
-	ld	hl,(rgsave+2)	; Push saved AF
-	push	hl
+	push	iy		; Push IY 5
+	push	ix		; Push IX 4
+	ld	hl,(rgsave)
+	push	hl		; Push HL 3
+	push	de		; Push DE 2
+	push	bc		; Push BC 1
+	ld	hl,(rgsave+2)
+	push	hl		; Push AF 0
 
 	;; Print everything saved to stack
 	ld	d,8
