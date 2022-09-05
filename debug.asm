@@ -111,6 +111,28 @@ regprnt:
 	pop	bc		; Restore BC
 	ld	hl,(rgsave)	; Restore HL
 	ret
+
+	;; Dump 128 byte sector at HL
+	;; destroys af, bc, hl
+dumprec:
+	ld	b,128
+nextdmp:
+	ld	c,(hl)
+	call	puthex2
+	ld	c,' '
+	call	dbgout
+	ld	a,b
+	and	a,0Fh
+	cp	a,1
+	jr	nz,noteol
+	ld	c,'\r'
+	call	dbgout
+	ld	c,'\n'
+	call	dbgout
+noteol:
+	inc	hl
+	djnz	nextdmp
+	ret
 	
 dbgmsg:	db	"debug $"
 
