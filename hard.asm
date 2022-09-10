@@ -1,5 +1,40 @@
 ;----------------------------------------------------------------------
 ;
+;	Various equates
+;
+;----------------------------------------------------------------------
+
+;	ports for the hard disk controller
+
+hdrhdpt	equ	020H		;Drive/head port
+hdatpt	equ	021H		;Data port
+hpcylpt	equ	021H		;Previous cylinder port
+hsecpt	equ	021H		;Sector port
+hncylpt	equ	022H		;New cylinder port
+hcmdpt	equ	023H		;Command port
+hstatpt	equ	023H		;Status port
+
+;	Commands for hard disk controller
+
+hcmdhom	equ	020H		;Restore (Home)
+hcmdsk	equ	010H		;Seek
+hcmdwrt	equ	002H		;Write
+hcmdred	equ	001H		;Read
+hcmdnul	equ	000H		;Null command
+
+;	Status bit meanings
+
+hsrdy	equ	080H		;Ready
+hswrtf	equ	040H		;Write fault
+;	equ	020H		;Not used
+hscrcer	equ	010H		;CRC error
+hsrnf	equ	008H		;Record not found
+hsbdsec	equ	004H		;Bad sector
+hstc	equ	002H		;Task complete
+hsbusy	equ	001H		;Busy
+
+;----------------------------------------------------------------------
+;
 ;	Drive select routine for the 8" hard disk drives
 ;	At entry: <IX> points to DGB (Device Group Block)
 ;		  <IY> points to PDB (Physical Device Block)
@@ -11,7 +46,7 @@ drvhd1:
 	cp	(ix+dgslmsk)	;is it the same as last time ??
 	ret	z		;exit if same
 
-	out	(drhdpt),a	;.. else select new drive
+	out	(hdrhdpt),a	;.. else select new drive
 	ld	(ix+dgslmsk),a	;update DGB
 	ret			;exit	
 
@@ -30,17 +65,17 @@ homhd1:
 	xor	a
 	ld	(iy+pdcyl),a
 	ld	(iy+pdcyl+1),a	;show current cylinder number as 0
-	ld	a,cmdhom	;home command
-	call	iogo		;issue command and wait for finish
-	and	srdy+stc+sbusy
-	cp	srdy+stc	;everything go ok ??
+	ld	a,hcmdhom	;home command
+	call	hiogo		;issue command and wait for finish
+	and	hsrdy+hstc+hsbusy
+	cp	hsrdy+hstc	;everything go ok ??
 	ld	a,1		;preset <A> to show error
 	ret	nz		;exit if error
 
 	set	pdfhome,(iy+pdflgs)	;show home has been done
 	xor	a		;clear <A> to show no error
-	out	(ncylpt),a	;low byte of cylinder address
-	out	(ncylpt),a	;high byte of cylinder address
+	out	(hncylpt),a	;low byte of cylinder address
+	out	(hncylpt),a	;high byte of cylinder address
 ;				;The home command does not set the
 ;				;.. cylinder ports.  It is necessary to set
 ;				;.. the new cylinder port so that a following
@@ -63,15 +98,15 @@ cylhd1:
 	ld	h,(iy+pdcyl+1)	;high order byte of cylinder number from PDB
 	ld	l,(iy+pdcyl)	;low order byte of cylinder number from PDB
 	ld	a,l		;low byte
-	out	(pcylpt),a
+	out	(hpcylpt),a
 	ld	a,h		;high byte
-	out	(pcylpt),a	;set old cylinder register
+	out	(hpcylpt),a	;set old cylinder register
 	ld	d,(ix+bpcyl+1)
 	ld	e,(ix+bpcyl)	;cylinder number from BPB
 	ld	a,e		;low byte
-	out	(ncylpt),a
+	out	(hncylpt),a
 	ld	a,d		;high byte
-	out	(ncylpt),a	;set new cylinder number
+	out	(hncylpt),a	;set new cylinder number
 ;				;Note: The new cylinder register must
 ;				;..    be reloaded with the current cylinder
 ;				;..    number in case a seek is not necessary.
@@ -82,10 +117,10 @@ cylhd1:
 
 	ld	(iy+pdcyl+1),d
 	ld	(iy+pdcyl),e	;save new cylinder in PDB
-	ld	a,cmdsk		;seek command
-	call	iogo		;issue command and wait for interrupt
-	and	srdy+stc+sbusy
-	cp	srdy+stc	;everything go ok ??
+	ld	a,hcmdsk	;seek command
+	call	hiogo		;issue command and wait for interrupt
+	and	hsrdy+hstc+hsbusy
+	cp	hsrdy+hstc	;everything go ok ??
 	ld	a,0		;preset for good return
 	ret	z		;exit if no error
 	
@@ -110,7 +145,7 @@ hedhd1:
 	rlca
 
 	or	(iy+selmsk)	;combine with select mask for this drive
-	out	(drhdpt),a	;select proper side
+	out	(hdrhdpt),a	;select proper side
 	ret			;exit
 
 
@@ -125,7 +160,7 @@ hedhd1:
 sechd1:
 	ld	a,(ix+bpsec)	;sector number from BPB
 	ld	(iy+pdsec),a	;show current sector number
-	out	(secpt),a	;inform controller
+	out	(hsecpt),a	;inform controller
 	ret			;exit
 
 
@@ -142,7 +177,7 @@ sechd1:
 ;----------------------------------------------------------------------
 
 redhd1:
-	ld	a,cmdred
+	ld	a,hcmdred
 	ld	(rwcmd),a	;show that common routine is to read a sector
 	ld	a,ldmard	;length of read commands for DMA
 	ld	(rwlen),a	;save for common routine
@@ -155,7 +190,7 @@ redhd1:
 	ld	(rdbln),hl	;put adjusted buffer length in DMA
 ;				;.. command string
 
-	jr	rw100		;go to common I/O routine
+	jr	hrw100		;go to common I/O routine
 
 ;----------------------------------------------------------------------
 ;
@@ -170,7 +205,7 @@ redhd1:
 ;----------------------------------------------------------------------
 
 wrthd1:
-	ld	a,cmdwrt
+	ld	a,hcmdwrt
 	ld	(rwcmd),a	;show that common routine is to write a sector
 	ld	a,ldmawr	;length of write commands for DMA
 	ld	(rwlen),a	;save for common routine
@@ -184,19 +219,18 @@ wrthd1:
 	ld	(wrtbln),de	;put adjusted buffer length in DMA
 ;				;.. command string
 
-	jr	rw100		;go to common I/O routine
+	jr	hrw100		;go to common I/O routine
 
-	page
 ;----------------------------------------------------------------------
 ;
 ;	Various common read/write routines
 ;
 ;----------------------------------------------------------------------
 
-rw100:
+hrw100:
 	in	a,(statpt)	;get status
-	and	srdy+sbusy	;isolate interesting bits
-	cp	srdy		;check for ready and not busy
+	and	hsrdy+hsbusy	;isolate interesting bits
+	cp	hsrdy		;check for ready and not busy
 	ld	a,1		;preset for error return
 	ret	nz		;exit if error
 
@@ -232,15 +266,15 @@ rw104:
 	otir			;initialize DMA chip
 
 	ld	a,(rwcmd)	;I/O command
-	call	iogo		;issue command and wait for interrupt
+	call	hiogo		;issue command and wait for interrupt
 	ld	b,a		;save status
-	and	srdy+swrtf+scrcer+srnf+sbdsec+stc+sbusy
-	cp	srdy+stc	;check for errors
+	and	hsrdy+hswrtf+hscrcer+hsrnf+hsbdsec+hstc+hsbusy
+	cp	hsrdy+hstc	;check for errors
 	ld	a,0		;preset for good return
 	ret	z		;return if no errors
 
 	ld	a,(rwcmd)	;get previous I/O command
-	cp	cmdred		;check for read command
+	cp	hcmdred		;check for read command
 	ld	a,0		;preset for read
 	jr	z,rw106		;if read...branch
 
@@ -251,11 +285,11 @@ rw106:
 	call	rwc200		;record temporary I/O error
 
 	ld	a,b
-	and	swrtf		;check for write fault
+	and	hswrtf		;check for write fault
 	jr	z,rw108		;branch if not write fault
 
 	xor	a
-	out	(drhdpt),a	;deselect drive to clear write fault
+	out	(hdrhdpt),a	;deselect drive to clear write fault
 	call	hedhd1		;reselect head and drive
 
 rw108:
@@ -278,7 +312,7 @@ rw108:
 ;				;.. and exit to routine which called read or
 ;				;.. write entry point
 
-	page
+	newpage
 ;----------------------------------------------------------------------
 ;
 ;	Common routine to be sure flag bit is not set,
@@ -287,295 +321,27 @@ rw108:
 ;
 ;----------------------------------------------------------------------
 
-hdiogo:
-iogo:
+hiogo:
 	ld	c,a		;save command
 	in	a,(statpt)	;get current status
 	ld	b,a		;save status
-	and	srdy+sbusy	;isolate interesting bits
-	cp	srdy		;only ready should be on
+	and	hsrdy+hsbusy	;isolate interesting bits
+	cp	hsrdy		;only ready should be on
 	ld	a,b		;restore status
 	ret	nz		;return if not ready or if busy
 
 	ld	a,c		;get command
 	ld	hl,hioflg	;point to hard disk
 	ld	(hl),0		;show I/O is pending
-	out	(cmdpt),a	;give hard disk command
+	out	(hcmdpt),a	;give hard disk command
 	xor	a		;same as I/O flag
 
-iogo4:
+hiogo4:
 	cp	(hl)		;look at I/O flag
-	jr	z,iogo4		;loop until I/O complete
+	jr	z,hiogo4	;loop until I/O complete
 
 	ld	a,(hdstat)	;retrieve status from I/O operation
 	ret			;exit
-
-	page
-mactr:	db	0		;major retry counter workarea
-mictr:	db	0		;minor retry counter workarea
-
-rwcmd:	db	0		;command for common read/write routine
-
-;	The following 2 variables must be kept together and in the order
-;	shown.
-rwptnc:
-	db	dmapt		;DMA port address
-rwlen:	db	0		;count of DMA commands
-
-rwdmap:	dw	0		;address of DMA commands
-
-;	DMA read commands
-
-dmared:
-	db	0C3H		;reset DMA controller
-	db	014H		;port A is memory, port A address increments
-	db	028H		;port B is I/O, port B address is fixed
-	db	08AH		;ready active high, CE(bar) only,
-;				;.. stop on end of block
-
-	db	079H		;transfer port B to port A
-rdmem:	dw	0		;port A (ie. memory) address
-rdbln:	dw	0		;block length (always 1 byte less than actual)
-	db	0A5H		;continuous transfer
-	db	datpt		;port B (ie. device) address
-	db	0CFH		;load starting address for both ports
-;				;.. clear byte counter
-	db	087H		;enable DMA controller
-ldmard	equ	$-dmared	;length of read commands for DMA controller
-
-;	DMA write commands
-
-dmawrt:
-	db	0C3H		;reset DMA controller
-	db	014H		;port A is memory, port A address increments
-	db	028H		;port B is I/O, port B address is fixed
-	db	08AH		;ready active high, CE(bar) only,
-;				;.. stop on end of block
-
-	db	079H		;transfer port B to port A
-wrtmem:	dw	0		;port A (ie. memory) address
-wrtbln:	dw	0		;block length (always 1 byte less than actual)
-	db	0A5H		;continuous transfer
-	db	datpt		;port B (ie. device) address
-	db	0CFH		;load starting address for both ports
-;				;.. clear byte counter
-	db	005H		;transfer port A to port B
-	db	0CFH		;load starting address for both ports
-;				;.. clear byte counter
-	db	087H		;enable DMA controller
-ldmawr	equ	$-dmawrt	;length of write commands for DMA controller
-
-
-	end
----------------------------------------------------
-;
-;	Altos Computer Systems
-;	2360 Bering Drive
-;	San Jose, California 95131
-;
-;	(408) 946-6700
-;
-;	Copyright 1981, Altos Computer Systems
-;
-;	This program is a copyright program product of Altos Computer
-;	Systems and is distributed to the owners of Altos ACS8000 series
-;	computers for use on those systems only.  Any other use of this
-;	software constitutes a breach of the copyright license to the
-;	purchaser.
-;
-;	Version Number: 2.24
-;
-;	Version Date:	February 24, 1981
-;
-;	This module of the CP/M 2.24 CBIOS contains several I/O routines
-;	used by both the floppy and hard disk driver routines.  These
-;	include a routine to obtain the address of the buffer and
-;	length of the data and two routines to record I/O errors in
-;	the PDB (Physical Device Block).
-;
-;----------------------------------------------------------------------
-
-	public	rwc100,rwc200,rwc300
-
-	page	62
-	include	PDB.EQU
-
-	include	BPTBPB.EQU
-
-	page
-;----------------------------------------------------------------------
-;
-;	Routine to get I/O information from PDB and BPB in preparation
-;	for setting up DMA controller.
-;	At entry: <IX> points to BPB
-;		  <IY> points to PDB
-;	Returns:  <BC> = number of bytes preceding data in buffer
-;		  <DE> = buffer address
-;		  <HL> = (physical sector data length) - 1
-;
-;----------------------------------------------------------------------
-
-rwc100:
-	ld	c,(iy+pdbrsv)	;number of bytes in buffer preceding data
-	ld	b,0		;make into 16 bit number
-	ld	d,(ix+@buf+1)
-	ld	e,(ix+@buf)	;get address of buffer
-	ld	h,(iy+pddata+1)
-	ld	l,(iy+pddata)	;length of data in physical sector
-	dec	hl		;subtract 1 for DMA controller
-	ret			;exit
-
-
-;----------------------------------------------------------------------
-;
-;	Record temporary I/O error in PDB
-;	At entry: <A>  = 0 if read, 1 if write
-;		  <B>  = status byte
-;		  <IY> points to PDB
-;
-;----------------------------------------------------------------------
-
-rwc200:
-	res	pdertp,(iy+pderflg)	;show temporary error
-	res	pderrw,(iy+pderflg)	;assume read error
-	or	a		;verify assumption
-	jr	z,rwc204	;if correct...branch
-
-	set	pderrw,(iy+pderflg)	;show this as a write error
-
-rwc204:
-	ld	(iy+pderst),b	;save status
-	ld	a,(iy+pdcyl)
-	ld	(iy+pdercyl),a
-	ld	a,(iy+pdcyl+1)
-	ld	(iy+pdercyl+1),a	;current cylinder
-	ld	a,(iy+pdhead)
-	ld	(iy+pderhd),a	;current head
-	ld	a,(iy+pdsec)
-	ld	(iy+pdersc),a	;current sector
-
-;	Add 1 to temporary error counter
-
-	inc	(iy+pdterr)	;bump low order byte of temporary error
-;				;.. counter
-	ret	nz		;exit unless carry
-	inc	(iy+pdterr+1)	;bump high order byte
-	ret			;ret
-
-	page
-;----------------------------------------------------------------------
-;
-;	Routine to record permanent I/O error in PDB
-;	At entry: <DE> = number of temporary errors for 1 permanent error
-;		  <IY> points to PDB
-;	Returns:  <A>  = 1 (to show permanent I/O error)
-;
-;----------------------------------------------------------------------
-
-rwc300:
-	ld	a,1		;put permanent error code in <A>
-	set	pdertp,(iy+pderflg)	;show permanent error
-	ld	h,(iy+pdterr+1)
-	ld	l,(iy+pdterr)
-	or	a		;clear carry
-	sbc	hl,de
-	ld	(iy+pdterr+1),h
-	ld	(iy+pdterr),l	;update temporary error counter
-
-	inc	(iy+pdperr)	;bump low order byte of permanent error
-;				;.. counter
-	ret	nz		;exit unless carry
-	inc	(iy+pdperr+1)	;bump high order byte
-	ret			;exit
-
-	end
-.z80
-	title	BIOS224H, Copyright 1981, Altos Computer Systems - 22 Jul 81
-
-	name	('BIOS2H')
-
-;----------------------------------------------------------------------
-;
-;	Altos Computer Systems
-;	2360 Bering Drive
-;	San Jose, California 95131
-;
-;	(408) 946-6700
-;
-;	Copyright 1981, Altos Computer Systems
-;
-;	This program is a copyright program product of Altos Computer
-;	Systems and is distributed to the owners of Altos ACS8000 series
-;	computers for use on those systems only.  Any other use of this
-;	software constitutes a breach of the copyright license to the
-;	purchaser.
-;
-;	Version Number: 2.24
-;	Version Date:	April 10, 1981
-;
-;	Version Number: 2.24*
-;	Version Date:	June 17, 1981
-;		Add CP/M signon message to cold boot routine.
-;		Add "special" entry point address to MPT.
-;		Change DPB for second logical drive on hard disk to allow
-;		for diagnostic area.
-;
-;	Version Number: 2.24F0
-;	Version Date:	July 22, 1981
-;		Change revision level.  (Change was made to BIOS224F)
-;
-;	This module of the CP/M 2.24 CBIOS contains the cold boot
-;	routine for CBIOS, most of the disk control blocks including
-;	the Master Pointer Table and various buffers and workareas.
-;
-;----------------------------------------------------------------------
-
-	public	mpt,sysint
-	public	ldat,ldsbld,ldsbxl
-	public	bpt,bpbpl,bpbend,dmabpb
-
-	extrn	drv800,hom800,cyl800,hed800,sec800,red800,wrt800
-	extrn	drvhd1,homhd1,cylhd1,hedhd1,sechd1,redhd1,wrthd1
-	extrn	pat,ptlb,ivctbl,bdos,spcial
-
-	page	62
-;----------------------------------------------------------------------
-;
-;	Various equates
-;
-;----------------------------------------------------------------------
-
-version	equ	22		;CP/M version number (times 10)
-altosv	equ	4		;Altos version level
-media	equ	'F'		;Floppy disk system
-revlvl	equ	'0'		;Revision level
-
-dspmsg	equ	9		;BDOS function for "print string" (on CRT)
-
-cr	equ	00DH		;Carriage return
-lf	equ	00AH		;Line feed
-eom	equ	'$'		;End of message indicator
-
-iobyte	equ	003H		;Location of Intel IOBYTE
-cdisk	equ	004H		;Location of current drive number
-fcb1	equ	05CH		;default location for FCB in low memory
-wrkspc	equ	080H		;Loader BIOS work space.  Contains BSPIT.
-tbase	equ	100H		;Base of CP/M Transient Program Area
-
-hdipt	equ	00AH		;Hard disk interrupt command port
-ctcp1pt	equ	00EH		;Baud rate generator for printer #1
-cnfgpt	equ	024H		;configuration port
-ctcc2pt	equ	030H		;Buad rate generator for console #2
-ctcc3pt	equ	031H		;Baud rate generator for consoles #3 & #4
-ctcp2pt	equ	032H		;Baud rate generator for printer #2
-
-	include	DGB.EQU
-
-	include	PDB.EQU
-
-	include	LDB.EQU
-
-	include	BPTBPB.EQU
 
 ;----------------------------------------------------------------------
 ;
@@ -592,7 +358,7 @@ mpt:				;Master Pointer Table
 ;				;.. Block)
 	dw	0		;Address of BSPIT (Bootstrap Parameter
 ;				;.. Information Table).  Not used in CBIOS.
-	dw	spcial		;Address of "special" entry point in CBIOS.
+	dw	0		;Address of "special" entry point in CBIOS.
 ;				;.. The code at this entry point provides
 ;				;.. support for certain diagnostic and utility
 ;				;.. functions.
@@ -641,127 +407,6 @@ pdb00:				;Physical Device Block for floppy drive #1
 	db	0		;Head number for most recent I/O error
 	db	0		;Physical sector number for most recent
 ;				;.. I/O error
-
-ldb000:				;Logical device block for first logical device
-	dw	pdb00		;Address of PDB for this LDB
-	dw	0		;Address of next LDB
-	dw	dph000		;Address of DPH for this logical device
-	dw	0		;Offset for logical track 0 from physical
-;				;.. track 0
-
-pdb01:				;Physical Device Block for floppy drive #2
-	dw	dgb0		;DGB for this PDB
-	dw	pdb02		;Address of next PDB
-	dw	ldb010		;Address of first LDB for this PDB
-	db	000h		;Shugart 800 floppy disk drive
-	db	008h		;Select mask - floppy drive #2
-	db	001h		;Flag bits
-	db	001h		;Mode number
-	db	002h		;Stepping rate indicator
-	db	000h		;Reserved
-	dw	0		;Reserved
-	dw	512		;Number of data bytes in physical sector
-	db	2		;Logical to physical sector shift factor
-	db	003h		;Logical sector offset mask
-	db	0		;Number of buffer bytes preceding data
-	db	1		;Sector number of first sector
-	dw	77		;Number of cylinders on this device
-	db	1		;Number of heads per cylinder
-	db	15		;Number of physical sectors per track
-	dw	0		;Current cylinder number
-	db	0		;Current head (ie. side) number
-	db	0		;Current physical sector number
-	dw	0		;Count of temporary I/O errors
-	dw	0		;Count of permanent I/O errors
-	db	0		;Flag bits for I/O errors
-	db	0		;Status from most recent I/O error
-	dw	0		;Cylinder number for most recent I/O error
-	db	0		;Head number for most recent I/O error
-	db	0		;Physical sector number for most recent
-;				;.. I/O error
-
-ldb010:				;Logical device block for second logical device
-	dw	pdb01		;Address of PDB for this LDB
-	dw	0		;Address of next LDB
-	dw	dph010		;Address of DPH for this logical device
-	dw	0		;Offset for logical track 0 from physical
-;				;.. track 0
-
-pdb02:				;Physical Device Block for floppy drive #3
-	dw	dgb0		;DGB for this PDB
-	dw	pdb03		;Address of next PDB
-	dw	ldb020		;Address of first LDB for this PDB
-	db	000h		;Shugart 800 floppy disk drive
-	db	010h		;Select mask - floppy drive #3
-	db	001h		;Flag bits
-	db	001h		;Mode number
-	db	002h		;Stepping rate indicator
-	db	000h		;Reserved
-	dw	0		;Reserved
-	dw	512		;Number of data bytes in physical sector
-	db	2		;Logical to physical sector shift factor
-	db	003h		;Logical sector offset mask
-	db	0		;Number of buffer bytes preceding data
-	db	1		;Sector number of first sector
-	dw	77		;Number of cylinders on this device
-	db	1		;Number of heads per cylinder
-	db	15		;Number of physical sectors per track
-	dw	0		;Current cylinder number
-	db	0		;Current head (ie. side) number
-	db	0		;Current physical sector number
-	dw	0		;Count of temporary I/O errors
-	dw	0		;Count of permanent I/O errors
-	db	0		;Flag bits for I/O errors
-	db	0		;Status from most recent I/O error
-	dw	0		;Cylinder number for most recent I/O error
-	db	0		;Head number for most recent I/O error
-	db	0		;Physical sector number for most recent
-;				;.. I/O error
-
-ldb020:				;Logical device block for third logical device
-	dw	pdb02		;Address of PDB for this LDB
-	dw	0		;Address of next LDB
-	dw	dph020		;Address of DPH for this logical device
-	dw	0		;Offset for logical track 0 from physical
-;				;.. track 0
-
-pdb03:				;Physical Device Block for floppy drive #4
-	dw	dgb0		;DGB for this PDB
-	dw	0		;Address of next PDB
-	dw	ldb030		;Address of first LDB for this PDB
-	db	000h		;Shugart 800 floppy disk drive
-	db	020h		;Select mask - floppy drive #4
-	db	001h		;Flag bits
-	db	001h		;Mode number
-	db	002h		;Stepping rate indicator
-	db	000h		;Reserved
-	dw	0		;Reserved
-	dw	512		;Number of data bytes in physical sector
-	db	2		;Logical to physical sector shift factor
-	db	003h		;Logical sector offset mask
-	db	0		;Number of buffer bytes preceding data
-	db	1		;Sector number of first sector
-	dw	77		;Number of cylinders on this device
-	db	1		;Number of heads per cylinder
-	db	15		;Number of physical sectors per track
-	dw	0		;Current cylinder number
-	db	0		;Current head (ie. side) number
-	db	0		;Current physical sector number
-	dw	0		;Count of temporary I/O errors
-	dw	0		;Count of permanent I/O errors
-	db	0		;Flag bits for I/O errors
-	db	0		;Status from most recent I/O error
-	dw	0		;Cylinder number for most recent I/O error
-	db	0		;Head number for most recent I/O error
-	db	0		;Physical sector number for most recent
-;				;.. I/O error
-
-ldb030:				;Logical device block for fourth logical device
-	dw	pdb03		;Address of PDB for this LDB
-	dw	0		;Address of next LDB
-	dw	dph030		;Address of DPH for this logical device
-	dw	0		;Offset for logical track 0 from physical
-;				;.. track 0
 
 dgb1:				;Device Group Block for Shugart 1004 hard
 ;				;.. disk drives
@@ -863,4 +508,120 @@ ldb110:				;Logical device block for 7th logical device
 ldb111:				;Logical device block for 8th logical device
 	dw	pdb11		;Address of PDB for this LDB
 	dw	0		;Address of next LDB
-	dw	dph111		;Ad
+	dw	dph111		;Address of DPH for this logical device
+	dw	965		;Offset for logical track 0 from physical
+;				;.. track 0
+
+;DPBs for hard disk
+
+;	diskdef	6,0,67,,16384,512,512,0,0
+dpbhd1:				;8,388,608 bytes
+	dw	68		;Sec per track
+	db	7		;Block shift
+	db	127		;Block mask
+	db	7		;Extent mask
+	dw	511		;(Disk size) - 1
+	dw	511		;(Directory max) - 1
+	db	128		;Alloc0
+	db	0		;Alloc1
+	dw	0		;Check size
+	dw	0		;Offset
+
+;	diskdef	7,0,67,,4096,74,128,0,0
+dpbhd2:				;303,104 bytes
+	dw	68		;Sec per track
+	db	5		;Block shift
+	db	31		;Block mask
+	db	3		;Extent mask
+	dw	73		;(Disk size) - 1
+	dw	127		;(Directory max) - 1
+	db	128		;Alloc0
+	db	0		;Alloc1
+	dw	0		;Check size
+	dw	0		;Offset
+
+dph100:				;DPH for first hard disk drive
+	dw	0		;Address of sector translate table
+	dw	0
+	dw	0,0		;Work areas
+	dw	dirbuf		;Address of directory buffer work area
+	dw	dpbhd1		;Address of DPB
+	dw	csv4		;Address of disk change work area
+	dw	alv4		;Address of disk allocate work area
+
+dph101:				;DPH for second hard disk drive
+	dw	0		;Address of sector translate table
+	dw	0
+	dw	0,0		;Work areas
+	dw	dirbuf		;Address of directory buffer work area
+	dw	dpbhd2		;Address of DPB
+	dw	csv5		;Address of disk change work area
+	dw	alv5		;Address of disk allocate work area
+
+dph110:				;DPH for third hard disk drive
+	dw	0		;Address of sector translate table
+	dw	0
+	dw	0,0		;Work areas
+	dw	dirbuf		;Address of directory buffer work area
+	dw	dpbhd1		;Address of DPB
+	dw	csv6		;Address of disk change work area
+	dw	alv6		;Address of disk allocate work area
+
+dph111:				;DPH for fourth hard disk drive
+	dw	0		;Address of sector translate table
+	dw	0
+	dw	0,0		;Work areas
+	dw	dirbuf		;Address of directory buffer work area
+	dw	dpbhd2		;Address of DPB
+	dw	csv7		;Address of disk change work area
+	dw	alv7		;Address of disk allocate work area
+
+dmabpb:				;This is the special BPB which is used to
+;				;.. refer to the caller's "DMA" area
+	dw	0		;Address of PDB for this BPB
+	dw	0		;Address of buffer area
+	dw	0		;Cylinder number
+	db	0		;Head number
+	db	0		;Physical sector number
+	db	0		;Bank mask for bank containing caller
+	db	0		;Flag bits
+
+bpt:				;Buffer Pool Table
+	dw	dmabpb		;Address of special BPB
+	db	0		;Reserved
+	db	(bpbend-bpbpl)/bpblen	;Number of buffers in buffer pool
+	dw	515		;length of one buffer in buffer pool
+	ds	bpblen		;Work area to allow re-ordering of BPB's
+bpbpl:				;These are the BPB's for buffers in the
+;				;.. buffer pool.
+	dw	0		;Address of PDB for this BPB
+	dw	buff1		;Address of buffer area
+	dw	0		;Cylinder number
+	db	0		;Head Number
+	db	0		;Physical sector number
+	db	0		;Bank mask for bank containing buffer
+	db	0		;Flag bits
+	dw	0
+	dw	buff2
+	dw	0
+	db	0
+	db	0
+	db	0
+	db	0
+bpbend:
+
+dirbuf:	ds	128		;Directory work area
+	
+;Hard disk work areas
+csv4:	;ds	0		;Changed disks work area (not used)
+alv4:	ds	64		;Allocation work area
+csv5:	;ds	0		;Changed disks work area (not used)
+alv5:	ds	16		;Allocation work area
+csv6:	;ds	0		;Changed disks work area (not used)
+alv6:	ds	64		;Allocation work area
+csv7:	;ds	0		;Changed disks work area (not used)
+alv7:	ds	16		;Allocation work area
+
+;Buffers for blocking/de-blocking
+buff1:	ds	515
+buff2:	ds	515
