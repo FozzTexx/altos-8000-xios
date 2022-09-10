@@ -53,8 +53,6 @@
 ;
 ;----------------------------------------------------------
 	include "diskdef.lib"
-;	MACLIB	DISKDEF	; Replaced by include statement
-;	MACLIB	Z80S	; Not needed, have a Z80 assembler
 
 TRUE	set	0FFFFH	;VALUE FOR TRUE
 FALSE	set	~~TRUE	;VALUE FOR FALSE
@@ -148,6 +146,8 @@ PLCI3	EQU	PLCI2+1	; POLL CONSOLE IN #3 (CRT:)
 
 MEMPORT	EQU	009H	; MEMORY SELECT PORT
 MEMSK	EQU	002H	; MEMORY SELECT MASK
+;; MEMPORT	EQU	025H	; MEMORY SELECT PORT
+;; MEMSK	EQU	018H	; MEMORY SELECT MASK
 
 ;-----------------------------------------------------------------------
 ;
@@ -401,6 +401,19 @@ XLT2:
 
 ;----------------------------------------------------------
 ;
+;	DISK EQUATES
+;
+;----------------------------------------------------------
+
+fcmdpt	equ	004H		;1797 command register
+ftrkpt	equ	005H		;1797 cylinder register (The 1797
+;				;.. booklet calls this a track register.)
+fsecpt	equ	006H		;1797 sector register
+fdatpt	equ	007H		;1797 data register
+frstpt	equ	009H		;1797 reset on bit 1
+
+;----------------------------------------------------------
+;
 ;	DISK ACCESS ROUTINES
 ;
 ;----------------------------------------------------------
@@ -529,7 +542,7 @@ MREADSECTOR:
 	ld	hl,(addroff)
 	ldir			;blockmove into the dma ar
 	ld	a,02h		; select bank 0
-	out	(09h),a
+	out	(memport),a
 	ei
 	ld	bc,128
 	ld	hl,(dmaadr)
@@ -551,7 +564,10 @@ compbank:
 	ld	a,h	;restore track
 	ld	h,0
 	and	0f0h		; bank is high order nibble
-	rar ! rar ! rar ! rar
+	rar
+	rar
+	rar
+	rar
 	inc	a
 	ld	(mbankno),a	; which bank we want
 
@@ -567,7 +583,13 @@ compbank:
 	ld	e,a
 	ld	d,0
 	add	hl,de		; add sector offset within
-	add	hl,hl ! dad h ! dad h ! dad h ! dad h ! dad h !
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl
 	ld	(addroff),hl	; (track * 24 + sector) * 1
 	ret
 	endif
@@ -607,7 +629,7 @@ mwritesector:
 	ex	de,hl
 	ldir
 	ld	a,02h		; select bank 0
-	out	(09h),a
+	out	(memport),a
 	ei
 	xor	a
 	ret
@@ -619,7 +641,7 @@ chgbank:
 	ral
 	and	018h
 	or	memsk
-	out	(009h),a
+	out	(memport),a
 	ret
 	endif
 
@@ -1223,11 +1245,11 @@ SELSOFT:
 ;-----------------------------------------------------------------------
 
 SLS1:
-	IN	A,(004H)	;ENSURE FLOPPY PORT NOT BUSY
+	IN	A,(FCMDPT)	;ENSURE FLOPPY PORT NOT BUSY
 	RRA			;
 	JR	C,SLS1		;
-	IN	A,(005H)	;READ THE TRACK REGISTER
-	OUT	(007H),A	;ENSURE WE DONT MOVE THE HEAD
+	IN	A,(FTRKPT)	;READ THE TRACK REGISTER
+	OUT	(FDATPT),A	;ENSURE WE DONT MOVE THE HEAD
 
 	LD	A,012H		;SEEK AND UNLOAD HEAD
 	CALL	FINTFIX		;CLEAR ANY PENDING INTERRUP
@@ -1257,12 +1279,12 @@ SLS3:
 SLS4:
 	AND	(HL)		;LOAD MASK AND CORRECT IF NECESSARY
 	OUT	(008H),A	;SELECT IT
-	IN	A,(004H)	;IS DRIVE READY?
+	IN	A,(FCMDPT)	;IS DRIVE READY?
 	RLA			;
 	JR	C,SLSERR	;IF NOT...BRANCH
 	EX	DE,HL		;RESTORE TRACK REGISTER ADD
 	LD	A,(HL)		;PICK UP TRACK NUMBER
-	OUT	(005H),A	;GIVE IT TO CONTROLLER
+	OUT	(FTRKPT),A	;GIVE IT TO CONTROLLER
 	XOR	A		;ENSURE CARRY IS RESET
 	LD	(ERFLAG),A	;ALSO ZERO ERROR INDICATOR
 	;; push	hl
@@ -1403,8 +1425,8 @@ LOAD_HEAD:
 	IN	A,(008H)	;IS HEAD LOADED ??
 	AND	00000010B	;CHECK IT....
 	JR	NZ,REMOVE_LD	;YES, ITS LOADED, DONT RELOAD....
-	IN	A,(005H)	;DUMMY SEEK TO START HEAD LOADING
-	OUT	(007H),A	;KEEP IT SHORT....
+	IN	A,(FTRKPT)	;DUMMY SEEK TO START HEAD LOADING
+	OUT	(FDATPT),A	;KEEP IT SHORT....
 	LD	A,01AH		;START HEAD LOADING
 	CALL	FINTFIX		;CLEAR ANY PENDING INTERRUPT
 ;				;AND ISSUE COMMAND
@@ -1432,7 +1454,7 @@ TRKTST:
 	CP	(HL)		;SAME AS LAST TIME ??
 	JR	Z,FSECSET	;YES, DONT BOTHER WITH SEEK
 	LD	(HL),A		;SAVE IT
-	OUT	(007H),A	;ALSO SEND IT TO CONTROLLER
+	OUT	(FDATPT),A	;ALSO SEND IT TO CONTROLLER
 
 	CALL	DBL_UPDATE	;DOUBLE SIDED SUPPORT
 
@@ -1450,7 +1472,7 @@ FPS1:	CALL	FPYWAIT		;WAIT FOR I/O TO COMPLETE
 FSECSET:
 	LD	A,(NEWSEC)	;SET SECTOR
 	LD	(SECTNO),A	;SAVE IN COMMONN PLACE
-	OUT	(006H),A	;
+	OUT	(FSECPT),A	;
 
 	CALL	FLOPPYIO	;DO I/O
 CHECKIT:
@@ -1483,7 +1505,7 @@ FLOPPYIO:
 	JP	Z,FRD		;NO, LEAVE INI CMD IN LOW MEMORY
 	LD	HL,067H		;POINT TO COMMAND AREA
 	LD	(HL),0A3H	;MAKE IT AN OTI CMD....
-FRD	EQU	$		;LABEL
+FRD:
 	ENDIF
 
 	IF	DMA
@@ -1680,13 +1702,13 @@ FPYWAIT:
 	OR	A		;
 	JR	NZ,NOFPYRST	;IF STILL AWAKE, SKIP RESET
 
-	IN	A,(009H)	;GET CURRENT BANK NUMBER
+	IN	A,(FRSTPT)	;GET CURRENT BANK NUMBER
 	AND	00011000B	;REMOVE OTHER INFO
-	OUT	(009H),A	;RESET WD1791
+	OUT	(FRSTPT),A	;RESET WD1791
 	LD	C,1		;DELAY 1 MILLISEC
 	CALL	DELAY		;
 	OR	00000010B	;END RESET
-	OUT	(009H),A	;
+	OUT	(FRSTPT),A	;
 	LD	A,(NEWDSK)	;MAKE SURE CURRENT DISK AND
 	LD	(DISKNO),A	; THE SAME
 NOFPYRST:
@@ -1715,15 +1737,15 @@ FINTFIX:
 	LD	E,FPYFLAG
 	CALL	XDOS
 
-	LD	HL,00103H	;SETTIME OUT INDICATOR ON |
-	LD	(FPYTIME),HL	;TIME TO BE BETWEEN 2 AND
+	LD	HL,00103H	;SET TIME OUT INDICATOR ON
+	LD	(FPYTIME),HL	; TIME TO BE BETWEEN 2 AND
 
 	POP	HL
 	POP	DE
 	POP	BC
 	POP	AF
 
-	OUT	(004H),A	;ISSUE COMMAND TO FLOPPY DI
+	OUT	(FCMDPT),A	;ISSUE COMMAND TO FLOPPY DI
 
 	RET
 
@@ -2024,9 +2046,8 @@ FLOPPY_INT:
 	LD	HL,FDINTH
 	JP	INTINIT
 FDINTH:
-	IN	A,(004H)	;GET STATUS
+	IN	A,(FCMDPT)	;GET STATUS
 	LD	(STATUS),A	;SAVE FOR I/O ROUTINE
-;	call	regdump
 	LD	A,0		;STOP TIMING OF RESPONSE TO
 	LD	(FPYTIME+1),A	;
 	LD	E,FPYFLAG	;SHOW I/O COMPLETED
@@ -2497,7 +2518,7 @@ SELMEMORY:
 	AND	018H		; MASK FOR PIO
 	OR	MEMSK		;
 	LD	(CURMEM),A	; STORE CURRENT BANK MASK
-	OUT	(009H),A	; SET PIO
+	OUT	(MEMPORT),A	; SET PIO
 	RET
 
 BANKNO:	DB	0		; LAST SELECTED MEMORY BANK NUMBER
@@ -2865,10 +2886,16 @@ BANK_SETUP:
 	CALL	STMVTR		; SET UP VECTORS
 	LD	A,00AH		; SELECT BANK 1
 	CALL	STMVTR		; SET UP VECTORS
+	;; LD	A,(3<<3)	; SELECT BANK 3
+	;; CALL	STMVTR		; SET UP VECTORS
+	;; LD	A,(2<<3)	; SELECT BANK 2
+	;; CALL	STMVTR		; SET UP VECTORS
+	;; LD	A,(1<<3)	; SELECT BANK 1
+	;; CALL	STMVTR		; SET UP VECTORS
 AFTER_BANK_SETUP:
 	else
-	ld	a,lah		; bank 3 select for directo
-	out	(09h),a
+	ld	a,1ah		; bank 3 select for directo
+	out	(memport),a
 	ld	hl,0bffeh
 	ld	a,0e5h
 	cp	(hl)
@@ -2885,7 +2912,7 @@ FILL:
 	ld	hl,0
 	ld	de,1
 	ld	a,0ah		; select bank 1
-	out	(09h),a
+	out	(memport),a
 	ld	(hl),0e5h
 	ldir
 dontfill:
