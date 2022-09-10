@@ -84,6 +84,7 @@ def main():
 
     reloc_map = 0
     if len(bin1) != len(bin2):
+      print("Binary difference", len(bin1), len(bin2))
       exit_code = 1
     else:
       for idx in range(len(bin1)):
