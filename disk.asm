@@ -5,6 +5,54 @@
 	
 bankpt	equ	025H		;Bank select port for both "DMA" and memory
 
+dskpio	equ	008H		;port to monitor for disk interrupts
+fdbit	equ	6		;interrupt indication from floppy disk
+hdbit	equ	7		;interrupt indication from hard disk
+fdstpt	equ	004H		;port for status from floppy disk
+hdstpt	equ	023H		;port for status from hard disk
+
+;----------------------------------------------------------------------
+;
+;	All floppy and hard disk interrupts are vectored here.  All
+;	registers and status bits must be preserved so that the
+;	interrupted task can be properly restarted.
+;
+;----------------------------------------------------------------------
+
+dskint:
+	push	af
+	push	hl		;save registers
+
+dskin2:
+	in	a,(dskpio)	;read PIO to see who caused interrupt
+	bit	hdbit,a		;check for hard disk interrupt
+	jr	z,dskin5	;if not hard disk...branch
+
+	in	a,(hdstpt)	;get status and clear interrupt from
+;				;.. hard disk controller
+	ld	(hdstat),a	;save status
+	ld	hl,hioflg	;point to hard disk I/O flag
+	jr	dskin8
+
+dskin5:
+	bit	fdbit,a		;check for floppy disk interrupt
+	jr	z,intxit	;if not floppy disk...branch
+	in	a,(fdstpt)	;get status and clear interrupt from
+;				;.. floppy disk controller
+	ld	(fdstat),a	;save status
+	ld	hl,fioflg	;point to floppy I/O flag
+
+dskin8:
+	ld	(hl),0ffh	;change flag to show I/O complete
+	jr	dskin2		;be sure both devices have their interrupts
+;				;cleared
+
+intxit:
+	pop	hl
+	pop	af		;restore registers
+	ei			;allow interrupts
+	reti			;exit and reset daisy chain
+
 ;----------------------------------------------------------------------
 ;
 ;	SELDSK entry point in CBIOS.

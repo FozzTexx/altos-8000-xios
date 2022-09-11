@@ -16,7 +16,9 @@ fssmsk	equ	020H		;Side select bit
 
 ;	ports for 1797
 
-fstatpt	equ	004H		;1797 status register
+	ifndef	fdstpt
+fdstpt	equ	004H		;1797 status register
+	endif
 fcmdpt	equ	004H		;1797 command register
 fcylpt	equ	005H		;1797 cylinder register (The 1797
 ;				;.. booklet calls this a track register.)
@@ -261,7 +263,7 @@ sec800:
 ;----------------------------------------------------------------------
 
 red800:
-	in	a,(fstatpt)	;status from 1797
+	in	a,(fdstpt)	;status from 1797
 	and	fsnrdy		;check for not ready
 	ld	a,1		;preset for error return
 	ret	nz		;
@@ -336,7 +338,7 @@ red804:
 wrt800:
 	ld	a,fcmdnul	;null command so that we can read
 	out	(fcmdpt),a	;.. command status
-	in	a,(fstatpt)	;status from 1797
+	in	a,(fdstpt)	;status from 1797
 	and	fsnrdy+fswrtp	;check for not ready, write protect
 	ld	a,1		;preset for error return
 	ret	nz		;no point in retrying either error
@@ -404,7 +406,7 @@ rw800:
 	call	rwc200		;record temporary error
 	ld	a,fcmdnul	;command to clear 1797
 	out	(fcmdpt),a	;issue command
-	in	a,(fstatpt)	;get status
+	in	a,(fdstpt)	;get status
 	ret			;exit
 
 ;	Place permanent error code in <A>

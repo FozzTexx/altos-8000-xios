@@ -12,7 +12,9 @@ hpcylpt	equ	021H		;Previous cylinder port
 hsecpt	equ	021H		;Sector port
 hncylpt	equ	022H		;New cylinder port
 hcmdpt	equ	023H		;Command port
-hstatpt	equ	023H		;Status port
+	ifndef	hdstpt
+hdstpt	equ	023H		;Status port
+	endif
 
 ;	Commands for hard disk controller
 
@@ -349,19 +351,19 @@ hiogo4:
 ;
 ;----------------------------------------------------------------------
 
-mpt:				;Master Pointer Table
-	dw	ldsb		;Address of LDSB (Logical Disk Select Block)
-	dw	dgb0		;Address of first DGB (Device Group Block)
-	dw	bpt		;Address of BPT (Buffer Pool Table)
-	dw	fdmt		;Address of FDMT (Floppy Disk Mode Table)
-	dw	ptlb		;Address of PTLB (Printer/Terminal Lookup
-;				;.. Block)
-	dw	0		;Address of BSPIT (Bootstrap Parameter
-;				;.. Information Table).  Not used in CBIOS.
-	dw	0		;Address of "special" entry point in CBIOS.
-;				;.. The code at this entry point provides
-;				;.. support for certain diagnostic and utility
-;				;.. functions.
+;; mpt:				;Master Pointer Table
+;; 	dw	ldsb		;Address of LDSB (Logical Disk Select Block)
+;; 	dw	dgb0		;Address of first DGB (Device Group Block)
+;; 	dw	bpt		;Address of BPT (Buffer Pool Table)
+;; 	dw	fdmt		;Address of FDMT (Floppy Disk Mode Table)
+;; 	dw	ptlb		;Address of PTLB (Printer/Terminal Lookup
+;; ;				;.. Block)
+;; 	dw	0		;Address of BSPIT (Bootstrap Parameter
+;; ;				;.. Information Table).  Not used in CBIOS.
+;; 	dw	0		;Address of "special" entry point in CBIOS.
+;; ;				;.. The code at this entry point provides
+;; ;				;.. support for certain diagnostic and utility
+;; ;				;.. functions.
 
 dgb0:				;Device Group Block for Shugart 800 floppy
 ;				;.. disk drives

@@ -424,39 +424,39 @@ DEVTBL:
 NMBDEV	EQU	($-DEVTBL)/2
 	DW	RTNEMPTY	; BAD DEVICE HANDLER
 
-ptlb:				;Printer/Terminal Lookup Block
-	dw	pat		;address of printer address table
-	dw	tat		;address of terminal address table
-	db	lstptr		;number for last printer
-numltm:	db	lstcon		;number for last terminal
+;; ptlb:				;Printer/Terminal Lookup Block
+;; 	dw	pat		;address of printer address table
+;; 	dw	tat		;address of terminal address table
+;; 	db	lstptr		;number for last printer
+;; numltm:	db	lstcon		;number for last terminal
 
-pat:				;Printer Address Table
-	dw	sioptr		;NOTE: The addresses for the two printers on
-	dw	cenptr		;..    this list will be interchanged by
-;				;..    the cold boot routine if CPMSETUP
-;				;..    specified a Centronics type printer
-lstptr	equ	($-pat)/2 - 1	;printer number for last printer
+;; pat:				;Printer Address Table
+;; 	dw	sioptr		;NOTE: The addresses for the two printers on
+;; 	dw	cenptr		;..    this list will be interchanged by
+;; ;				;..    the cold boot routine if CPMSETUP
+;; ;				;..    specified a Centronics type printer
+;; lstptr	equ	($-pat)/2 - 1	;printer number for last printer
 
-tat:				;Terminal Address Table
-	dw	con00
-lstcon	equ	($-tat)/2 - 1	;console number for last console
+;; tat:				;Terminal Address Table
+;; 	dw	con00
+;; lstcon	equ	($-tat)/2 - 1	;console number for last console
 
-sioptr	equ	$-4
-	dw	coutst		;address of output status routine
-	dw	coutda		;address of output data routine
-	db	01FH		;I/O status port number
-	db	01EH		;I/O data port number
+;; sioptr	equ	$-4
+;; 	dw	coutst		;address of output status routine
+;; 	dw	coutda		;address of output data routine
+;; 	db	01FH		;I/O status port number
+;; 	db	01EH		;I/O data port number
 
-cenptr	equ	$-4
-	dw	cenost
-	dw	cenoda
-	db	010H
-	db	011H
+;; cenptr	equ	$-4
+;; 	dw	cenost
+;; 	dw	cenoda
+;; 	db	010H
+;; 	db	011H
 
-con00:
-	dw	cinst		;address of input status routine
-	dw	cindat		;address of input data routine
-	dw	coutst		;address of output status routine
-	dw	coutda		;address of output data routine
-	db	01DH		;I/O status port number
-	db	01CH		;I/O data port number
+;; con00:
+;; 	dw	cinst		;address of input status routine
+;; 	dw	cindat		;address of input data routine
+;; 	dw	coutst		;address of output status routine
+;; 	dw	coutda		;address of output data routine
+;; 	db	01DH		;I/O status port number
+;; 	db	01CH		;I/O data port number
