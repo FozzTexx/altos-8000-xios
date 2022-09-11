@@ -53,8 +53,6 @@
 ;
 ;----------------------------------------------------------
 	include "diskdef.lib"
-;	MACLIB	DISKDEF	; Replaced by include statement
-;	MACLIB	Z80S	; Not needed, have a Z80 assembler
 
 TRUE	set	0FFFFH	;VALUE FOR TRUE
 FALSE	set	~~TRUE	;VALUE FOR FALSE
@@ -149,8 +147,13 @@ PLCI1	EQU	PLCI0+1	; POLL CONSOLE IN #1 (CRT:)
 PLCI2	EQU	PLCI1+1	; POLL CONSOLE IN #2 (CRT:)
 PLCI3	EQU	PLCI2+1	; POLL CONSOLE IN #3 (CRT:)
 
-MEMPORT	EQU	009H	; MEMORY SELECT PORT
-MEMSK	EQU	002H	; MEMORY SELECT MASK
+;; For 8000/8100/8200
+;; MEMPORT	EQU	009H	; MEMORY SELECT PORT
+;; MEMSK	EQU	002H	; MEMORY SELECT MASK
+
+;; For 8500
+MEMPORT	EQU	025H	; MEMORY SELECT PORT
+MEMSK	EQU	000H	; MEMORY SELECT MASK
 
 ;-----------------------------------------------------------------------
 ;
@@ -232,6 +235,7 @@ INTERUPT:
 	DW	NULL_INT	;
 	DW	NULL_INT	;
 	DW	NULL_INT	;
+	DW	NULL_INT	;
 
 	if	~~mpm20
 NULL_INT:
@@ -307,7 +311,7 @@ SELMEMORY:
 	AND	018H		; MASK FOR PIO
 	OR	MEMSK		;
 	LD	(CURMEM),A	; STORE CURRENT BANK MASK
-	OUT	(009H),A	; SET PIO
+	OUT	(MEMPORT),A	; SET PIO
 	RET
 
 BANKNO:	DB	0		; LAST SELECTED MEMORY BANK NUMBER
@@ -501,10 +505,16 @@ BANK_SETUP:
 	CALL	STMVTR		; SET UP VECTORS
 	LD	A,00AH		; SELECT BANK 1
 	CALL	STMVTR		; SET UP VECTORS
+	;; LD	A,(3<<3)	; SELECT BANK 3
+	;; CALL	STMVTR		; SET UP VECTORS
+	;; LD	A,(2<<3)	; SELECT BANK 2
+	;; CALL	STMVTR		; SET UP VECTORS
+	;; LD	A,(1<<3)	; SELECT BANK 1
+	;; CALL	STMVTR		; SET UP VECTORS
 AFTER_BANK_SETUP:
 	else
-	ld	a,lah		; bank 3 select for directo
-	out	(09h),a
+	ld	a,1ah		; bank 3 select for directo
+	out	(memport),a
 	ld	hl,0bffeh
 	ld	a,0e5h
 	cp	(hl)
@@ -521,7 +531,7 @@ FILL:
 	ld	hl,0
 	ld	de,1
 	ld	a,0ah		; select bank 1
-	out	(09h),a
+	out	(memport),a
 	ld	(hl),0e5h
 	ldir
 dontfill:

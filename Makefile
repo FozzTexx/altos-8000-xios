@@ -17,3 +17,6 @@ ldrbios.hex: ldrbios.p
 
 mpm.sys: xios.spr
 	./gensys
+
+xmpmldr.com: ldrbios.hex
+	./xmpmldr-create
