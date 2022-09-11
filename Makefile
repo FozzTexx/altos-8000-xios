@@ -8,7 +8,7 @@ AS=./asl-err-wrap -cpu z80
 
 default: ldrbios.hex xios.spr
 
-xios.spr: xios.asm debug.asm
+xios.spr: xios.asm debug.asm disk.asm floppy.asm hard.asm console.asm
 
 ldrbios.p: ldrbios.asm \
 	   ldrb224a.asm ldrb224b.asm ldrb224c.asm ldrb224d.asm ldrb224e.asm ldrb224h.asm

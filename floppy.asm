@@ -484,6 +484,7 @@ fiogo3:
 	jr	z,fiogo3	;loop until I/O complete
 
 	ld	a,(fdstat)	;retrieve status from I/O operation
+;	jp	regdump
 	ret			;exit
 
 fiogo4:
@@ -739,7 +740,7 @@ dpbm2:				;Single sided, double density, 128 byte sectors
 
 	newpage
 dph000:				;DPH for first floppy disk drive
-	dw	0		;Address of sector translate table
+	dw	sdxlt		;Address of sector translate table
 	dw	0
 	dw	0,0		;Work areas
 	dw	dirbuf		;Address of directory buffer work area
@@ -774,6 +775,51 @@ dph030:				;DPH for fourth floppy disk drive
 	dw	csv3		;Address of disk change work area
 	dw	alv3		;Address of disk allocate work area
 	
+dgb0:				;Device Group Block for Shugart 800 floppy
+;				;.. disk drives
+	dw	dgb1		;Address of next DGB
+	dw	pdb00		;Address of first PDB in this Device Group
+	db	0		;Select mask from currently selected device
+	db	0		;Reserved
+	dw	drv800		;Address of drive select routine
+	dw	hom800		;Address of home routine
+	dw	cyl800		;Address of seek routine
+	dw	hed800		;Address of head select routine
+	dw	sec800		;Address of physical sector select routine
+	dw	red800		;Address of physical sector read routine
+	dw	wrt800		;Address of physical sector write routine
+
+pdb00:				;Physical Device Block for floppy drive #1
+	dw	dgb0		;DGB for this PDB
+	dw	pdb01		;Address of next PDB
+	dw	ldb000		;Address of first LDB for this PDB
+	db	000h		;Shugart 800 floppy disk drive
+	db	004h		;Select mask - floppy drive #1
+	db	005h		;Flag bits
+	db	000h		;Mode number
+	db	002h		;Stepping rate indicator
+	db	000h		;Reserved
+	dw	0		;Reserved
+	dw	128		;Number of data bytes in physical sector
+	db	0		;Logical to physical sector shift factor
+	db	0		;Logical sector offset mask
+	db	0		;Number of buffer bytes preceding data
+	db	1		;Sector number of first sector
+	dw	77		;Number of cylinders on this device
+	db	1		;Number of heads per cylinder
+	db	48		;Number of physical sectors per track
+	dw	0		;Current cylinder number
+	db	0		;Current head (ie. side) number
+	db	0		;Current physical sector number
+	dw	0		;Count of temporary I/O errors
+	dw	0		;Count of permanent I/O errors
+	db	0		;Flag bits for I/O errors
+	db	0		;Status from most recent I/O error
+	dw	0		;Cylinder number for most recent I/O error
+	db	0		;Head number for most recent I/O error
+	db	0		;Physical sector number for most recent
+;				;.. I/O error
+
 ldb000:				;Logical device block for first logical device
 	dw	pdb00		;Address of PDB for this LDB
 	dw	0		;Address of next LDB
