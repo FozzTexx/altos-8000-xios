@@ -1,7 +1,7 @@
 #!/bin/bash
 Z80PACK=~/stuff/z80pack-1.37/cpmsim
 XIOSDIR=${PWD}
-DRIVE=j
+DRIVE=i
 DISK="-f z80pack-hd disks/drive${DRIVE}.dsk"
 
 set -e

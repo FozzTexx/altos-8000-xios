@@ -246,6 +246,10 @@ setdma:
 ;----------------------------------------------------------------------
 
 SECTRAN:
+	;; call	regdump
+	;; ld	hl,dbgmsg
+	;; call	putmsg
+	;; call	puthex2
 	ex	de,hl
 	ld	a,h
 	or	l		;find out if translate table exists
@@ -253,6 +257,15 @@ SECTRAN:
 	add	hl,bc		;point to translated sector number
 	ld	l,(hl)		;get (one byte) sector value
 	ld	h,0
+	;; ld	c,' '
+	;; call	dbgout
+	;; ld	b,h
+	;; ld	c,l
+	;; call	puthex2
+	;; push	hl
+	;; ld	hl,newln
+	;; call	putmsg
+	;; pop	hl
 	ret			;exit
 
 sectr5:
@@ -310,6 +323,17 @@ div2:
 ;----------------------------------------------------------------------
 
 read:
+	;; ld	hl,readmsg
+	;; call	putmsg
+	;; ld	bc,(newcyl)
+	;; call	puthex4
+	;; ld	c,' '
+	;; call	dbgout
+	;; ld	bc,(newpsc)
+	;; call	puthex4
+	;; ld	hl,newln
+	;; call	putmsg
+	
 	ld	iy,(newpdb)		;point to PDB
 	bit	pdfbuf,(iy+pdflgs)	;is the buffer to be the caller's
 ;					;.. "DMA" area ??

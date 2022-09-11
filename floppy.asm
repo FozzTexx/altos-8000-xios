@@ -744,7 +744,7 @@ dph000:				;DPH for first floppy disk drive
 	dw	0
 	dw	0,0		;Work areas
 	dw	dirbuf		;Address of directory buffer work area
-	dw	dpbm2		;Address of DPB
+	dw	dpbm0		;Address of DPB
 	dw	csv0		;Address of disk change work area
 	dw	alv0		;Address of disk allocate work area
 
