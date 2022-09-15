@@ -20,8 +20,8 @@ puthex2:
 	call	puthex
 	pop	bc
 puthex:
-	push	bc
 	push	af
+	push	bc
 	ld	a,c
 	and	a,0Fh
 	add	a,'0'
@@ -30,8 +30,8 @@ puthex:
 	add	a,'A'-'9'-1
 isdig:	ld	c,a
 	call	dbgout
-	pop	af
 	pop	bc
+	pop	af
 	ret
 
 	;; Write character in C to console 0
@@ -65,10 +65,13 @@ newln:	db	"\r\n$"
 regmsg:	db	"\r\nAF: $  BC: $  DE: $  HL: $\r\nIX: $  IY: $  SP: $  RT: $"
 rgsave:	dw	0
 	dw	0
+
 regdump:
+	call	flagpr
 	ld	(rgsave),hl	; Save HL to restore when done
 	pop	hl		; Get return address
 	push	hl		; put it back
+	push	af		; Save AF to restore when done
 	push	bc		; Save BC to restore when done
 	push	de		; Save DE to restore when done
 
@@ -107,11 +110,62 @@ regprnt:
 	ld	hl,newln
 	call	putmsg
 	
+	ld	hl,(rgsave)	; Restore HL
 	pop	de		; Restore DE
 	pop	bc		; Restore BC
-	ld	hl,(rgsave)	; Restore HL
+	pop	af		; Restore AF
 	ret
 
+flgstr:	db	'\r\nFlags: $'
+flgpos:	db	'sz0h0vncSZ1H1VNC'
+
+flagpr:
+	push	af
+	push	hl
+	push	de
+	push	bc
+	push	af		; Save flags to pop after printing message
+
+	ld	hl,flgstr
+	call	putmsg
+	
+	pop	bc
+	ld	a,c		; Flags now in A
+	ld	hl,flgpos
+	ld	de,flgpos+8
+	ld	b,8
+nxflag:	
+	sla	a
+	jr	nc,flag0
+	ex	de,hl
+	ld	c,(hl)
+	ex	de,hl
+	jr	flag1
+flag0:
+	ld	c,(hl)
+flag1:
+	push	af		; dbgout destroys A
+	call	dbgout
+	pop	af
+	inc	hl
+	inc	de
+	djnz	nxflag
+	
+	pop	bc
+	pop	de
+	pop	hl
+	pop	af
+	ret
+
+msgdump:
+	ld	(rgsave),hl	; Save HL to restore when done
+	pop	hl		; Get return address
+	call	putmsg		; Print string that is just after call
+	inc	hl
+	push	hl		; Return to instruction after string
+	ld	hl,(rgsave)	; Restore HL
+	jp	regdump
+	
 	;; Dump 128 byte sector at HL
 	;; destroys af, bc, hl
 dumprec:

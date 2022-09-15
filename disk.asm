@@ -76,6 +76,8 @@ seldsk:
 ;				;.. translated number must be equal 0FFH
 	jr	c,selerr	;if translated number = 0FFH...branch
 
+	;; call	msgdump
+	;; db	'not0FFH$'
 	ld	hl,ldat		;point to table of addresses of logical
 				;.. disks
 	add	hl,bc
@@ -94,6 +96,8 @@ seldsk:
 	bit	pdfdev,(iy+pdflgs)	;is device available ??
 	jr	z,selerr	;if not...branch
 
+	;; call	msgdump
+	;; db	'devavail$'
 	ld	(newpdb),iy	;save PDB address for later
 	ld	(newldb),ix	;also save pointer to LDB
 	ld	h,(ix+_dph+1)
@@ -102,6 +106,8 @@ seldsk:
 	bit	pdfhome,(iy+pdflgs)	;has it been homed yet ??
 	ret	nz		;if already homed...exit
 
+	;; call	msgdump
+	;; db	'homed$'
 ;				;<IX> still has address of LDB
 ;				;<IY> still has address of PDB
 	push	hl		;save DPH address
@@ -113,6 +119,8 @@ seldsk:
 
 selerr:
 	ld	hl,0		;show error
+	;; call	msgdump
+	;; db	'selerr$'
 	ret
 
 ;----------------------------------------------------------------------
@@ -154,6 +162,8 @@ drhome:
 drhom3:
 	ld	h,(ix+_home+1)
 	ld	l,(ix+_home)	;get address for home routine
+	;; call	msgdump
+	;; db	'drhome$'
 	jp	(hl)		;go do home and return to routine
 ;				;.. that called this routine.
 ;				;.. <IY> points to PDB
@@ -679,6 +689,8 @@ rw220:				;Put address of I/O routine in <HL>, jump
 	inc	hl
 	ld	d,(hl)
 	ex	de,hl		;<HL> points to I/O routine
+	;; call	msgdump
+	;; db	'rw220$'
 	jp	(hl)		;jump to requested routine
 
 rw250:				;As necessary, do drive select, seek,

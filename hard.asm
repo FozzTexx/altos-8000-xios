@@ -16,6 +16,8 @@ hcmdpt	equ	023H		;Command port
 hdstpt	equ	023H		;Status port
 	endif
 
+hdipt	equ	00AH		;Hard disk interrupt command port
+	
 ;	Commands for hard disk controller
 
 hcmdhom	equ	020H		;Restore (Home)
@@ -69,11 +71,15 @@ homhd1:
 	ld	(iy+pdcyl+1),a	;show current cylinder number as 0
 	ld	a,hcmdhom	;home command
 	call	hiogo		;issue command and wait for finish
+	;; call	msgdump
+	;; db	'\r\nHD Home$'
 	and	hsrdy+hstc+hsbusy
 	cp	hsrdy+hstc	;everything go ok ??
 	ld	a,1		;preset <A> to show error
 	ret	nz		;exit if error
 
+	;; call	msgdump
+	;; db	'homed$'
 	set	pdfhome,(iy+pdflgs)	;show home has been done
 	xor	a		;clear <A> to show no error
 	out	(hncylpt),a	;low byte of cylinder address
@@ -179,17 +185,19 @@ sechd1:
 ;----------------------------------------------------------------------
 
 redhd1:
+	;; call	msgdump
+	;; db	'redhd1$'
 	ld	a,hcmdred
 	ld	(rwcmd),a	;show that common routine is to read a sector
-	ld	a,ldmard	;length of read commands for DMA
+	ld	a,hldmard	;length of read commands for DMA
 	ld	(rwlen),a	;save for common routine
-	ld	hl,dmared	;point to the DMA read commands
+	ld	hl,hdmared	;point to the DMA read commands
 	ld	(rwdmap),hl	;save for common routine
 
 	call	rwc100		;get buffer address and length for DMA
 	add	hl,bc		;add offset to length of data
-	ld	(rdmem),de	;put buffer address in DMA command string
-	ld	(rdbln),hl	;put adjusted buffer length in DMA
+	ld	(hrdmem),de	;put buffer address in DMA command string
+	ld	(hrdbln),hl	;put adjusted buffer length in DMA
 ;				;.. command string
 
 	jr	hrw100		;go to common I/O routine
@@ -209,16 +217,16 @@ redhd1:
 wrthd1:
 	ld	a,hcmdwrt
 	ld	(rwcmd),a	;show that common routine is to write a sector
-	ld	a,ldmawr	;length of write commands for DMA
+	ld	a,hldmawr	;length of write commands for DMA
 	ld	(rwlen),a	;save for common routine
-	ld	hl,dmawrt	;point to the DMA write commands
+	ld	hl,hdmawrt	;point to the DMA write commands
 	ld	(rwdmap),hl	;save for common routine
 
 	call	rwc100		;get buffer address and length for DMA
 	ex	de,hl
 	add	hl,bc		;add offset to buffer address
-	ld	(wrtmem),hl	;put buffer address in DMA command string
-	ld	(wrtbln),de	;put adjusted buffer length in DMA
+	ld	(hwrtmem),hl	;put buffer address in DMA command string
+	ld	(hwrtbln),de	;put adjusted buffer length in DMA
 ;				;.. command string
 
 	jr	hrw100		;go to common I/O routine
@@ -230,7 +238,7 @@ wrthd1:
 ;----------------------------------------------------------------------
 
 hrw100:
-	in	a,(statpt)	;get status
+	in	a,(hdstpt)	;get status
 	and	hsrdy+hsbusy	;isolate interesting bits
 	cp	hsrdy		;check for ready and not busy
 	ld	a,1		;preset for error return
@@ -240,9 +248,9 @@ hrw100:
 
 	ld	a,mirty		;minor retry counter (number of reads or
 ;				;.. writes for each home)
-	ld	(mictr),a	;set counter workarea
+	ld	(hmictr),a	;set counter workarea
 	ld	a,marty		;major retry counter (number of homes + 1)
-	ld	(mactr),a	;set counter workarea
+	ld	(hmactr),a	;set counter workarea
 
 	jr	rw104
 
@@ -269,6 +277,8 @@ rw104:
 
 	ld	a,(rwcmd)	;I/O command
 	call	hiogo		;issue command and wait for interrupt
+	;; call	msgdump
+	;; db	'rw104$'
 	ld	b,a		;save status
 	and	hsrdy+hswrtf+hscrcer+hsrnf+hsbdsec+hstc+hsbusy
 	cp	hsrdy+hstc	;check for errors
@@ -295,13 +305,13 @@ rw106:
 	call	hedhd1		;reselect head and drive
 
 rw108:
-	ld	hl,mictr
+	ld	hl,hmictr
 	dec	(hl)		;decrement minor loop control
 	jr	nz,rw104
 
 	ld	(hl),mirty	;reset minor retry counter
 
-	ld	hl,mactr
+	ld	hl,hmactr
 	dec	(hl)		;decrement major loop control
 	jr	nz,rw102
 
@@ -325,10 +335,12 @@ rw108:
 
 hiogo:
 	ld	c,a		;save command
-	in	a,(statpt)	;get current status
+	in	a,(hdstpt)	;get current status
 	ld	b,a		;save status
 	and	hsrdy+hsbusy	;isolate interesting bits
 	cp	hsrdy		;only ready should be on
+	;; call	msgdump
+	;; db	'hready$'
 	ld	a,b		;restore status
 	ret	nz		;return if not ready or if busy
 
@@ -341,9 +353,64 @@ hiogo:
 hiogo4:
 	cp	(hl)		;look at I/O flag
 	jr	z,hiogo4	;loop until I/O complete
+	;; call	msgdump
+	;; db	'HG4$'
 
 	ld	a,(hdstat)	;retrieve status from I/O operation
+	;; call	msgdump
+	;; db	'hiogo$'
 	ret			;exit
+
+hmactr:	db	0		;major retry counter workarea
+hmictr:	db	0		;minor retry counter workarea
+
+;	DMA read commands
+
+hdmared:
+	db	0C3H		;reset DMA controller
+	db	014H		;port A is memory, port A address increments
+	db	028H		;port B is I/O, port B address is fixed
+	db	08AH		;ready active high, CE(bar) only,
+;				;.. stop on end of block
+
+	db	079H		;transfer port B to port A
+hrdmem:	dw	0		;port A (ie. memory) address
+hrdbln:	dw	0		;block length (always 1 byte less than actual)
+	db	0A5H		;continuous transfer
+	db	hdatpt		;port B (ie. device) address
+	db	0CFH		;load starting address for both ports
+;				;.. clear byte counter
+	db	087H		;enable DMA controller
+hldmard	equ	$-hdmared	;length of read commands for DMA controller
+
+;	DMA write commands
+
+hdmawrt:
+	db	0C3H		;reset DMA controller
+	db	014H		;port A is memory, port A address increments
+	db	028H		;port B is I/O, port B address is fixed
+	db	08AH		;ready active high, CE(bar) only,
+;				;.. stop on end of block
+
+	db	079H		;transfer port B to port A
+hwrtmem:	dw	0		;port A (ie. memory) address
+hwrtbln:	dw	0		;block length (always 1 byte less than actual)
+	db	0A5H		;continuous transfer
+	db	hdatpt		;port B (ie. device) address
+	db	0CFH		;load starting address for both ports
+;				;.. clear byte counter
+	db	005H		;transfer port A to port B
+	db	0CFH		;load starting address for both ports
+;				;.. clear byte counter
+	db	087H		;enable DMA controller
+hldmawr	equ	$-hdmawrt	;length of write commands for DMA controller
+
+piocmds:			;commands to PIO to allow hard disk interrupts
+	db	037H		;disable interrupts, OR monitored bits,
+;				;.. monitor for high state, mask follows
+	db	03FH		;monitor D7, D6 for interrupts
+	db	083H		;enable interrupts
+piolen	equ	$-piocmds	;length of command string
 
 ;----------------------------------------------------------------------
 ;

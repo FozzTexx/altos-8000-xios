@@ -6,7 +6,7 @@ AS=./asl-err-wrap -cpu z80
 %.hex: %.p
 	p2hex -F Intel -M 2 $<
 
-default: ldrbios.hex xios.spr
+default: ldrbios.hex mpm.sys
 
 xios.spr: xios.asm debug.asm disk.asm floppy.asm hard.asm console.asm
 

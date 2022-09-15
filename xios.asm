@@ -188,7 +188,7 @@ WBOTE:
 	JP	SETSEC		;SET SECTOR NUMBER - called after banner 4
 	JP	SETDMA		;SET DMA ADDRESS - called before banner 4
 	JP	READ		;READ DISK - called after banner 5
-	JP	debugo;WRITE		;WRITE DISK
+	JP	WRITE		;WRITE DISK
 	JP	debugp;POLLPT		;LIST STATUS
 	JP	SECTRAN		;SECTOR TRANSLATE - called after banner 3
 
@@ -255,7 +255,9 @@ mirty	equ	3		;Minor I/O error retry counter
 
 	include "disk.asm"
 	include	"floppy.asm"
+	if	hardsk
 	include "hard.asm"
+	endif
 	include "console.asm"
 
 	if	mpm20
@@ -599,6 +601,15 @@ dontfill:
 	LD	A,250		; TIME CONSTANT
 	OUT	(033H),A	;
 
+	IF HARDSK
+;	set PIO for hard disk interrupt
+
+	ld	b,piolen	;length of commands to PIO
+	ld	c,hdipt		;port address for PIO for hard disk interrupts
+	ld	hl,piocmds	;point to PIO commands
+	otir			;issue commands to PIO
+	ENDIF
+	
 	;; IF	HARDSK
 	;; XOR	A		;ZERO ACCUMULATOR
 	;; LD	(HSTACT),A	;SET HOST BUFFER INACTIVE
