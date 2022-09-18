@@ -2,7 +2,7 @@
 	include "pdb.equ"
 	include "dgb.equ"
 	include "bptbpb.equ"
-	
+
 bankpt	equ	025H		;Bank select port for both "DMA" and memory
 
 dskpio	equ	008H		;port to monitor for disk interrupts
@@ -343,7 +343,7 @@ read:
 	;; call	puthex4
 	;; ld	hl,newln
 	;; call	putmsg
-	
+
 	ld	iy,(newpdb)		;point to PDB
 	bit	pdfbuf,(iy+pdflgs)	;is the buffer to be the caller's
 ;					;.. "DMA" area ??
@@ -535,7 +535,7 @@ rw150:				;Search buffer pool BPB's for match on
 	ld	a,(bpt+numbuf)	;get count of BPB's in buffer pool
 	ld	ix,bpbpl	;point to first BPB
 	ld	bc,bpblen	;length of 1 BPB
-	
+
 rw152:
 	ld	d,(ix+_bppdb+1)
 	ld	e,(ix+_bppdb)	;<DE> contains PDB address from BPB
@@ -673,7 +673,7 @@ rw200:				;As necessary, do drive select, seek,
 	ld	de,_sec		;offset for sector select routine
 ;				;.. <IX> points to BPB
 ;				;.. <IY> points to PDB
-	jr	rw220		;do sector select and exit to routine which
+;	jr	rw220		;do sector select and exit to routine which
 ;				;.. called rw200
 
 rw220:				;Put address of I/O routine in <HL>, jump
