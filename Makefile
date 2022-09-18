@@ -5,10 +5,12 @@ AS=./asl-err-wrap -cpu z80
 	$(AS) -L $(basename $<).lst --spr $<
 %.hex: %.p
 	p2hex -F Intel -M 2 $<
+%.bin: %.p
+	p2bin $<
 
 default: xmpmldr.com mpm.sys
 
-xios.spr: xios.asm debug.asm disk.asm floppy.asm hard.asm console.asm
+xios.spr: xios.asm debug.asm disk.asm floppy.asm hard.asm console.asm bank.asm
 
 ldrbios.p: ldrbios.asm \
 	   ldrb224a.asm ldrb224b.asm ldrb224c.asm ldrb224d.asm ldrb224e.asm ldrb224h.asm
@@ -20,3 +22,9 @@ mpm.sys: xios.spr
 
 xmpmldr.com: ldrbios.hex
 	./xmpmldr-create
+
+hello.com: hello.bin
+	mv $< $@
+
+hello.prl: hello.spr
+	mv $< $@

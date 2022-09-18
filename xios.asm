@@ -153,7 +153,7 @@ PLCI3	EQU	PLCI2+1	; POLL CONSOLE IN #3 (CRT:)
 
 ;; For 8500
 MEMPORT	EQU	025H	; MEMORY SELECT PORT
-MEMSK	EQU	0C0H	; MEMORY SELECT MASK
+MEMSK	EQU	0E0H	; MEMORY SELECT MASK
 
 ;-----------------------------------------------------------------------
 ;
@@ -293,32 +293,19 @@ NULL_INT:
 
 ; SELECT / PROTECT MEMORY
 
+	include "bank.asm"
+	
 SELMEMORY:
 				; REG BC = ADR OF MEM DESCRIPTOR
 				; BC -> BASE   1 BYTE,
 				;	SIZE   1 BYTE,
 				;	ATTRIB 1 BYTE,
 				;	BANK   1 BYTE.
-				;
-				;   BIOS TABLE MODIFIED
-	CP	20H		;
-	JP	Z,$
+
 	LD	HL,3		; POINT TO BANK
 	ADD	HL,BC		;
-	IN	A,(MEMPORT)
-	AND	MEMSK		; PRESERVE DMA BANK SELECTION
-	LD	B,A
-	LD	A,(HL)		;  GET IT
-	LD	(BANKNO),A	; SAVE BANK NUMBER
-	RLA			;
-	RLA			;
-	RLA			;
-	AND	018H		; MASK FOR PIO
-	OR	B		;
-	OUT	(MEMPORT),A	; SET PIO
-	RET
-
-BANKNO:	DB	0		; LAST SELECTED MEMORY BANK NUMBER
+	LD	C,(HL)		;  GET REQUESTED BANK
+	jr	selbank
 
 ; START CLOCK
 
@@ -486,61 +473,55 @@ SYSTEMINIT:
 	ADD	HL,HL		;HL= RESTART JUMP ADDRESS
 	LD	(SVDBPA),HL
 
-	if	~~MDISK
-	ld	hl,(SYSDAT)
-	ld	l,15		;hl = .nmbmemsegs
-	ld	b,(hl)		;b =  nmbmemsegs
-TEST_BANK_SETUP_LOOP:
-	inc	hl
-	inc	hl
-	inc	hl
-	inc	hl		;hl = .memseg(i). bank
-	ld	a,(hl)
-	or	a
-	jp	nz,BANK_SETUP
-	dec	b
-	jp	nz,TEST_BANK_SETUP_LOOP
-	jp	AFTER_BANK_SETUP
-BANK_SETUP:
-	LD	A,01AH		; SELECT BANK 3
-	CALL	STMVTR		; SET UP VECTORS
-	LD	A,012H		; SELECT BANK 2
-	CALL	STMVTR		; SET UP VECTORS
-	LD	A,00AH		; SELECT BANK 1
-	CALL	STMVTR		; SET UP VECTORS
-	;; LD	A,(3<<3)	; SELECT BANK 3
-	;; CALL	STMVTR		; SET UP VECTORS
-	;; LD	A,(2<<3)	; SELECT BANK 2
-	;; CALL	STMVTR		; SET UP VECTORS
-	;; LD	A,(1<<3)	; SELECT BANK 1
-	;; CALL	STMVTR		; SET UP VECTORS
-AFTER_BANK_SETUP:
-	else
-	ld	a,1ah		; bank 3 select for directo
-	out	(memport),a
-	ld	hl,0bffeh
-	ld	a,0e5h
-	cp	(hl)
-	inc	hl
-	jr	nz,fill
-	cp	(hl)
-	jr	z,dontfill
-FILL:
-	ld	(hl),a		;set directory initialized
-	dec	hl
-	ld	(hl),a
+;; 	if	~~MDISK
+;; 	ld	hl,(SYSDAT)
+;; 	ld	l,15		;hl = .nmbmemsegs
+;; 	ld	b,(hl)		;b =  nmbmemsegs
+;; test_bank_setup_loop:
+;; 	inc	hl
+;; 	inc	hl
+;; 	inc	hl
+;; 	inc	hl		;hl = .memseg(i). bank
+;; 	ld	a,(hl)
+;; 	or	a
+;; 	jp	nz,bank_setup
+;; 	dec	b
+;; 	jp	nz,test_bank_setup_loop
+;; 	jp	after_bank_setup
+;; bank_setup:
+;; 	LD	A,3<<3		; SELECT BANK 3
+;; 	CALL	STMVTR		; SET UP VECTORS
+;; 	LD	A,2<<3		; SELECT BANK 2
+;; 	CALL	STMVTR		; SET UP VECTORS
+;; 	LD	A,1<<3		; SELECT BANK 1
+;; 	CALL	STMVTR		; SET UP VECTORS
+;; after_bank_setup:
+;; 	else
+;; 	ld	a,3<<3		; bank 3 select for directo
+;; 	out	(memport),a
+;; 	ld	hl,0bffeh
+;; 	ld	a,0e5h
+;; 	cp	(hl)
+;; 	inc	hl
+;; 	jr	nz,fill
+;; 	cp	(hl)
+;; 	jr	z,dontfill
+;; fill:
+;; 	ld	(hl),a		;set directory initialized
+;; 	dec	hl
+;; 	ld	(hl),a
 
-	ld	bc,07ffh	;first 2 k of bank one gets
-	ld	hl,0
-	ld	de,1
-	ld	a,0ah		; select bank 1
-	out	(memport),a
-	ld	(hl),0e5h
-	ldir
-dontfill:
-	endif
-	LD	A,002H		; SELECT BANK 0
-	CALL	STMVTR		; SET UP VECTORS
+;; 	ld	bc,07ffh	;first 2 k of bank one gets
+;; 	ld	hl,0
+;; 	ld	de,1
+;; 	ld	a,1<<3		; select bank 1
+;; 	out	(memport),a
+;; 	ld	(hl),0e5h
+;; 	ldir
+;; dontfill:
+;; 	endif
+;; 	LD	A,000H		; SELECT BANK 0
+;; 	CALL	STMVTR		; SET UP VECTORS
 
 ;;	ld	hl,LDRBIOSBASE+DENSITY_MASK_OFFSET
 ;;	LD	DE,SEL0		;	THE SETUP PROGRAM
@@ -627,6 +608,7 @@ STMVTR:
 	LD	(0),A		;  JMP INSTRUCTION
 	LD	HL,(SVDJT)	;
 	LD	(1),HL
+	;; call	regdump2
 	LD	HL,(SVDBPA)
 	LD	(HL),A
 	INC	HL

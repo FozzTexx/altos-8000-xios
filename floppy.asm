@@ -301,6 +301,28 @@ red804:
 ;				;check for errors
 	or	c		;combine with end of block indicator
 ;				;.. (0 = eob)
+;; 	push	af
+;; 	in	a,(25h)
+;; 	and	a,018h
+;; 	ld	c,a
+;; 	ld	a,(bankno)
+;; 	;; cp	c
+;; 	;; jr	z,zerobank
+;; 	call	puthex2
+;; 	ld	c,a
+;; 	call	puthex2
+;; 	ld	h,(ix+_buf+1)
+;; 	ld	l,(ix+_buf)	;get address of buffer
+;; 	ld	b,h
+;; 	ld	c,l
+;; 	call	puthex4
+;; 	ld	c,'\r'
+;; 	call	dbgout
+;; 	ld	c,'\n'
+;; 	call	dbgout
+;; 	;; call	dumprec
+;; zerobank:	
+;; 	pop	af
 	ret	z		;return if no errors
 
 	xor	a		;show that this is a read
