@@ -2,14 +2,17 @@
 	include "pdb.equ"
 	include "dgb.equ"
 	include "bptbpb.equ"
-
-bankpt	equ	025H		;Bank select port for both "DMA" and memory
+	include "xios.equ"
 
 dskpio	equ	008H		;port to monitor for disk interrupts
 fdbit	equ	6		;interrupt indication from floppy disk
 hdbit	equ	7		;interrupt indication from hard disk
+	ifndef	fdstpt
 fdstpt	equ	004H		;port for status from floppy disk
+	endif
+	ifndef	hdstpt
 hdstpt	equ	023H		;port for status from hard disk
+	endif
 
 ;----------------------------------------------------------------------
 ;
@@ -516,6 +519,9 @@ rw110:				;routine to initailize the special BPB
 	ld	(ix+_buf+1),h
 	ld	(ix+_buf),l	;put address of caller's "DMA" area in BPB
 
+	if	mpm20
+	call	swtuser
+	endif
 	in	a,(bankpt)	;get current memory and DMA bank select info
 	and	00011000b	;get current CPU bank number since this is
 ;				;.. where caller's "DMA" area is
@@ -524,6 +530,9 @@ rw110:				;routine to initailize the special BPB
 	rlca			;move bank number into position for DMA bank
 ;				;.. number
 	ld	(ix+bpmsk),a	;save for later
+	if	mpm20
+	call	swtsys
+	endif
 
 	ret			;exit
 
@@ -767,9 +776,7 @@ hrdwbd:	dw	ldb100		;.. logical drive 4, (first hard disk)
 	dw	ldb110		;.. logical drive 6,
 	dw	ldb111		;.. logical drive 7.
 
-fdstat:	db	0		;floppy disk status byte
 hdstat:	db	0		;hard disk status byte
-fioflg:	db	0ffh		;initialize to show no I/O pending
 hioflg:	db	0ffh		;initialize to show no I/O pending
 
 rwcmd:	db	0		;command for common read/write routine

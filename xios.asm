@@ -147,14 +147,6 @@ PLCI1	EQU	PLCI0+1	; POLL CONSOLE IN #1 (CRT:)
 PLCI2	EQU	PLCI1+1	; POLL CONSOLE IN #2 (CRT:)
 PLCI3	EQU	PLCI2+1	; POLL CONSOLE IN #3 (CRT:)
 
-;; For 8000/8100/8200
-;; MEMPORT	EQU	009H	; MEMORY SELECT PORT
-;; MEMSK	EQU	002H	; MEMORY SELECT MASK
-
-;; For 8500
-MEMPORT	EQU	025H	; MEMORY SELECT PORT
-MEMSK	EQU	0E0H	; MEMORY SELECT MASK
-
 ;-----------------------------------------------------------------------
 ;
 ;	JUMP VECTORS FOR ENTRIES TO CBIOS ROUTINES
@@ -243,22 +235,10 @@ NULL_INT:
 	RETI
 	endif
 
-dmapt	equ	000H		;DMA controller port
-;	Status bit from DMA port
-dmaeob	equ	020H		;End of block (value of 0 = eob)
-
-;	Miscellaneous
-marty	equ	3		;Major I/O error retry counter
-;				;.. (number of homes + 1)
-mirty	equ	3		;Minor I/O error retry counter
-;				;.. (number of reads or writes per home)
-
-	include "disk.asm"
 	include	"floppy.asm"
 	if	hardsk
 	include "hard.asm"
 	endif
-	include "console.asm"
 
 	if	mpm20
 
@@ -282,19 +262,21 @@ WARMSTART:
 					; FOR COMPATIBILITY WITH CP
 	JP	XDOS			; SYSTEM RESET, TERMINATE P
 
+	include "disk.asm"
+	include "console.asm"
+	
 rtnempty:
 	xor	a
 	ret
 
 NULL_INT:
+	call	regdump
 	EI
 	RETI
 	endif
 
 ; SELECT / PROTECT MEMORY
 
-	include "bank.asm"
-	
 SELMEMORY:
 				; REG BC = ADR OF MEM DESCRIPTOR
 				; BC -> BASE   1 BYTE,
@@ -302,12 +284,65 @@ SELMEMORY:
 				;	ATTRIB 1 BYTE,
 				;	BANK   1 BYTE.
 
-	ld	c,a
-	call	puthex
-	LD	HL,3		; POINT TO BANK
-	ADD	HL,BC		;
-	LD	C,(HL)		;  GET REQUESTED BANK
-	jr	selbank
+;; 	pop	hl		; Get caller's address
+;; 	push	hl
+;; 	or	a
+;; 	ld	de,0F468h
+;; 	sbc	hl,de
+;; 	add	hl,de
+;; 	jr	z,selok
+
+;; 	or	a
+;; 	ld	de,0DF6Ch
+;; 	sbc	hl,de
+;; 	add	hl,de
+;; 	jr	z,selok
+	
+;; 	or	a
+;; 	ld	de,0E855h
+;; 	sbc	hl,de
+;; 	add	hl,de
+;; 	jr	z,selok
+	
+;; 	;; or	a
+;; 	;; ld	de,0E869h
+;; 	;; sbc	hl,de
+;; 	;; add	hl,de
+;; 	;; jr	z,selok
+	
+;; 	call	regdump2
+;; 	jp	$
+;; selok:
+	inc	bc
+	inc	bc
+	inc	bc
+	ld	a,(bc)		;  GET REQUESTED BANK
+
+	rlca
+	rlca
+	rlca
+	ld	b,a
+
+	in	a,(bankpt)
+	and	a,018h
+	cp	b
+	ret	z
+
+	;; ld	a,b
+	;; rra
+	;; rra
+	;; rra
+	;; and	3	
+	;; add	a,03Ch
+	;; ld	c,a
+	;; call	dbgout
+	;; and	a,3
+	
+	in	a,(bankpt)
+	and	dmamsk		; Preserve DMA bank and write protect
+	or	b
+	out	(bankpt),a
+	ret
 
 ; START CLOCK
 
@@ -500,7 +535,7 @@ SYSTEMINIT:
 ;; after_bank_setup:
 ;; 	else
 ;; 	ld	a,3<<3		; bank 3 select for directo
-;; 	out	(memport),a
+;; 	out	(bankpt),a
 ;; 	ld	hl,0bffeh
 ;; 	ld	a,0e5h
 ;; 	cp	(hl)
@@ -517,7 +552,7 @@ SYSTEMINIT:
 ;; 	ld	hl,0
 ;; 	ld	de,1
 ;; 	ld	a,1<<3		; select bank 1
-;; 	out	(memport),a
+;; 	out	(bankpt),a
 ;; 	ld	(hl),0e5h
 ;; 	ldir
 ;; dontfill:
@@ -605,7 +640,7 @@ SYSTEMINIT:
 	RET			;
 
 STMVTR:
-	OUT	(MEMPORT),A
+	OUT	(BANKPT),A
 	LD	A,0C3H		; SET VECTORS FOR BDOS
 	LD	(0),A		;  JMP INSTRUCTION
 	LD	HL,(SVDJT)	;

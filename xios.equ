@@ -1,0 +1,13 @@
+	ifndef	_xiosequ
+_xiosequ equ 1
+dmapt	equ	000h		;DMA controller port
+dmaeob	equ	020h		;End of block (value of 0 = eob)
+;	Miscellaneous
+marty	equ	3		;Major I/O error retry counter
+;				;.. (number of homes + 1)
+mirty	equ	3		;Minor I/O error retry counter
+;				;.. (number of reads or writes per home)
+
+bankpt	equ	025h		; Bank select port
+dmamsk	EQU	0E0h		; DMA and write protect mask
+	endif

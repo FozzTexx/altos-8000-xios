@@ -1,3 +1,5 @@
+	include "bptbpb.equ"
+
 ;----------------------------------------------------------------------
 ;
 ;	Various equates
@@ -229,7 +231,7 @@ wrthd1:
 	ld	(hwrtbln),de	;put adjusted buffer length in DMA
 ;				;.. command string
 
-	jr	hrw100		;go to common I/O routine
+;	jr	hrw100		;go to common I/O routine
 
 ;----------------------------------------------------------------------
 ;
@@ -634,8 +636,6 @@ bpbpl:				;These are the BPB's for buffers in the
 	db	0
 bpbend:
 
-dirbuf:	ds	128		;Directory work area
-	
 ;Hard disk work areas
 csv4:	;ds	0		;Changed disks work area (not used)
 alv4:	ds	64		;Allocation work area

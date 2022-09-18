@@ -1,5 +1,5 @@
-	ifndef	memport
-memport	equ	025h
+	ifndef	bankpt
+bankpt	equ	025h
 	endif
 dmamask	equ	0E0h
 
@@ -103,7 +103,7 @@ bnkmsg:	db	'Bank: $'
 	;; Returns selected bank in <A>
 	;;  
 getbank:
-	in	a,(memport)
+	in	a,(bankpt)
 	rra
 	rra
 	rra
@@ -124,12 +124,12 @@ selbank:
 	;; call	putmsg
 	;; pop	hl
 
-	ld	a,c
-	add	a,03Ch
-	ld	c,a
-	call	dbgout
+	;; ld	a,c
+	;; add	a,03Ch
+	;; ld	c,a		; Yes this mangles C but the bank is still in the lower bits
+	;; call	dbgout
 	
-	in	a,(memport)
+	in	a,(bankpt)
 	and	memsk		; Preserve DMA bank and write protect
 	ld	b,a
 	ld	a,c
@@ -138,5 +138,5 @@ selbank:
 	rla
 	and	018h
 	or	b
-	out	(memport),a
+	out	(bankpt),a
 	ret

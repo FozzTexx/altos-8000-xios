@@ -1,3 +1,9 @@
+	include "dgb.equ"
+	include "pdb.equ"
+	include "ldb.equ"
+	include "bptbpb.equ"
+	include	"xios.equ"
+
 ;----------------------------------------------------------------------
 ;
 ;	Various equates
@@ -972,3 +978,9 @@ csv2:	ds	64		;Changed disks work area
 alv2:	ds	36		;Allocation work area
 csv3:	ds	64		;Changed disks work area
 alv3:	ds	36		;Allocation work area
+
+fdstat:	db	0		;floppy disk status byte
+fioflg:	db	0ffh		;initialize to show no I/O pending
+
+dirbuf:	ds	128		;Directory work area
+	
