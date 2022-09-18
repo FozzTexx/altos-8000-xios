@@ -123,6 +123,11 @@ selbank:
 	;; ld	hl,newln
 	;; call	putmsg
 	;; pop	hl
+
+	ld	a,c
+	add	a,03Ch
+	ld	c,a
+	call	dbgout
 	
 	in	a,(memport)
 	and	memsk		; Preserve DMA bank and write protect

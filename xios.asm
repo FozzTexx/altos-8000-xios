@@ -302,6 +302,8 @@ SELMEMORY:
 				;	ATTRIB 1 BYTE,
 				;	BANK   1 BYTE.
 
+	ld	c,a
+	call	puthex
 	LD	HL,3		; POINT TO BANK
 	ADD	HL,BC		;
 	LD	C,(HL)		;  GET REQUESTED BANK
