@@ -65,15 +65,34 @@ newln:	db	"\r\n$"
 regmsg:	db	"\r\nAF: $  BC: $  DE: $  HL: $\r\nIX: $  IY: $  SP: $  RT: $"
 rgsave:	dw	0
 	dw	0
+	dw	0
 
+	;; Use second value on stack as RT
+regdump2:
+	ld	(rgsave),hl	; Save HL to restore when done
+	pop	hl		; Get return address
+	ld	(rgsave+2),hl	; Save it
+	pop	hl		; Get second return address
+	push	hl		; Put it back
+	ld	(rgsave+4),hl	; Save it
+	ld	hl,(rgsave+2)
+	push	hl		; Put back original return address
+	ld	hl,(rgsave+4)
+	jr	reggo
+	
+	;; Print all registers and flags
 regdump:
-	call	flagpr
 	ld	(rgsave),hl	; Save HL to restore when done
 	pop	hl		; Get return address
 	push	hl		; put it back
+
+	;; HL contains RT (return address), rgsave contains HL
+reggo:	
 	push	af		; Save AF to restore when done
 	push	bc		; Save BC to restore when done
 	push	de		; Save DE to restore when done
+
+	call	flagpr
 
 	;; Put all registers on stack to print them
 	push	hl		; Push RT 7 - return address
@@ -117,7 +136,7 @@ regprnt:
 	ret
 
 flgstr:	db	'\r\nFlags: $'
-flgpos:	db	'sz0h0vncSZ1H1VNC'
+flgpos:	db	'--0-0---SZ1H1VNC'
 
 flagpr:
 	push	af
