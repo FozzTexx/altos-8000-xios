@@ -1,4 +1,7 @@
 	include "bptbpb.equ"
+	include "pdb.equ"
+	include "dgb.equ"
+	include "xios.equ"
 
 ;----------------------------------------------------------------------
 ;
@@ -73,15 +76,11 @@ homhd1:
 	ld	(iy+pdcyl+1),a	;show current cylinder number as 0
 	ld	a,hcmdhom	;home command
 	call	hiogo		;issue command and wait for finish
-	;; call	msgdump
-	;; db	'\r\nHD Home$'
 	and	hsrdy+hstc+hsbusy
 	cp	hsrdy+hstc	;everything go ok ??
 	ld	a,1		;preset <A> to show error
 	ret	nz		;exit if error
 
-	;; call	msgdump
-	;; db	'homed$'
 	set	pdfhome,(iy+pdflgs)	;show home has been done
 	xor	a		;clear <A> to show no error
 	out	(hncylpt),a	;low byte of cylinder address
@@ -187,8 +186,6 @@ sechd1:
 ;----------------------------------------------------------------------
 
 redhd1:
-	;; call	msgdump
-	;; db	'redhd1$'
 	ld	a,hcmdred
 	ld	(rwcmd),a	;show that common routine is to read a sector
 	ld	a,hldmard	;length of read commands for DMA
@@ -279,8 +276,6 @@ rw104:
 
 	ld	a,(rwcmd)	;I/O command
 	call	hiogo		;issue command and wait for interrupt
-	;; call	msgdump
-	;; db	'rw104$'
 	ld	b,a		;save status
 	and	hsrdy+hswrtf+hscrcer+hsrnf+hsbdsec+hstc+hsbusy
 	cp	hsrdy+hstc	;check for errors
@@ -341,8 +336,6 @@ hiogo:
 	ld	b,a		;save status
 	and	hsrdy+hsbusy	;isolate interesting bits
 	cp	hsrdy		;only ready should be on
-	;; call	msgdump
-	;; db	'hready$'
 	ld	a,b		;restore status
 	ret	nz		;return if not ready or if busy
 
@@ -355,12 +348,8 @@ hiogo:
 hiogo4:
 	cp	(hl)		;look at I/O flag
 	jr	z,hiogo4	;loop until I/O complete
-	;; call	msgdump
-	;; db	'HG4$'
 
 	ld	a,(hdstat)	;retrieve status from I/O operation
-	;; call	msgdump
-	;; db	'hiogo$'
 	ret			;exit
 
 hmactr:	db	0		;major retry counter workarea
@@ -649,3 +638,14 @@ alv7:	ds	16		;Allocation work area
 ;Buffers for blocking/de-blocking
 buff1:	ds	515
 buff2:	ds	515
+
+rwcmd:	db	0		;command for common read/write routine
+;	The following 2 variables must be kept together and in the order
+;	shown.
+rwptnc:
+	db	dmapt		;DMA port address
+rwlen:	db	0		;count of DMA commands
+rwdmap:	dw	0		;address of DMA commands
+
+hdstat:	db	0		;hard disk status byte
+hioflg:	db	0ffh		;initialize to show no I/O pending

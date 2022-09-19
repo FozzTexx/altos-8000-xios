@@ -79,8 +79,6 @@ seldsk:
 ;				;.. translated number must be equal 0FFH
 	jr	c,selerr	;if translated number = 0FFH...branch
 
-	;; call	msgdump
-	;; db	'not0FFH$'
 	ld	hl,ldat		;point to table of addresses of logical
 				;.. disks
 	add	hl,bc
@@ -99,8 +97,6 @@ seldsk:
 	bit	pdfdev,(iy+pdflgs)	;is device available ??
 	jr	z,selerr	;if not...branch
 
-	;; call	msgdump
-	;; db	'devavail$'
 	ld	(newpdb),iy	;save PDB address for later
 	ld	(newldb),ix	;also save pointer to LDB
 	ld	h,(ix+_dph+1)
@@ -109,8 +105,6 @@ seldsk:
 	bit	pdfhome,(iy+pdflgs)	;has it been homed yet ??
 	ret	nz		;if already homed...exit
 
-	;; call	msgdump
-	;; db	'homed$'
 ;				;<IX> still has address of LDB
 ;				;<IY> still has address of PDB
 	push	hl		;save DPH address
@@ -122,8 +116,6 @@ seldsk:
 
 selerr:
 	ld	hl,0		;show error
-	;; call	msgdump
-	;; db	'selerr$'
 	ret
 
 ;----------------------------------------------------------------------
@@ -165,8 +157,6 @@ drhome:
 drhom3:
 	ld	h,(ix+_home+1)
 	ld	l,(ix+_home)	;get address for home routine
-	;; call	msgdump
-	;; db	'drhome$'
 	jp	(hl)		;go do home and return to routine
 ;				;.. that called this routine.
 ;				;.. <IY> points to PDB
@@ -247,6 +237,13 @@ setse2:
 
 setdma:
 	ld	(usrdma),bc	;save caller's "DMA" address
+	if	mpm20
+	call	swtuser
+	in	a,(bankpt)
+	and	00011000b
+	ld	(usrbnk),a
+	call	swtsys
+	endif
 	ret			;exit
 
 ;----------------------------------------------------------------------
@@ -259,10 +256,6 @@ setdma:
 ;----------------------------------------------------------------------
 
 SECTRAN:
-	;; call	regdump
-	;; ld	hl,dbgmsg
-	;; call	putmsg
-	;; call	puthex2
 	ex	de,hl
 	ld	a,h
 	or	l		;find out if translate table exists
@@ -642,8 +635,23 @@ rw190:				;transfer data between caller and buffer
 	ex	de,hl		;.. else exchange addresses
 
 rw192:
+	if	mpm20
+	in	a,(bankpt)	;get current bank select info
+	push	af
+	and	11100111b	;zero out current bank number
+	ld	b,a		;save it
+	ld	a,(usrbnk)	;get caller's bank
+	or	b		;combin with bank select
+	out	(bankpt),a	;set DMA bank number
+	endif
+	
 	ld	bc,128		;length of data transfer
 	ldir			;move
+
+	if	mpm20
+	pop	af
+	out	(bankpt),a
+	endif
 	ret			;exit
 
 	newpage
@@ -698,8 +706,6 @@ rw220:				;Put address of I/O routine in <HL>, jump
 	inc	hl
 	ld	d,(hl)
 	ex	de,hl		;<HL> points to I/O routine
-	;; call	msgdump
-	;; db	'rw220$'
 	jp	(hl)		;jump to requested routine
 
 rw250:				;As necessary, do drive select, seek,
@@ -744,6 +750,7 @@ rw280:				;As necessary, do drive select, seek,
 	newpage
 newldb:	dw	0		;new LDB address
 usrdma:	dw	0		;caller's "DMA" address
+usrbnk:	db	0
 
 newpdb:	dw	0		;new PDB address
 
@@ -775,15 +782,3 @@ hrdwbd:	dw	ldb100		;.. logical drive 4, (first hard disk)
 	dw	ldb101		;.. logical drive 5,
 	dw	ldb110		;.. logical drive 6,
 	dw	ldb111		;.. logical drive 7.
-
-hdstat:	db	0		;hard disk status byte
-hioflg:	db	0ffh		;initialize to show no I/O pending
-
-rwcmd:	db	0		;command for common read/write routine
-;	The following 2 variables must be kept together and in the order
-;	shown.
-rwptnc:
-	db	dmapt		;DMA port address
-rwlen:	db	0		;count of DMA commands
-
-rwdmap:	dw	0		;address of DMA commands

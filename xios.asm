@@ -239,6 +239,7 @@ NULL_INT:
 	if	hardsk
 	include "hard.asm"
 	endif
+	include "disk-common.asm"
 
 	if	mpm20
 
