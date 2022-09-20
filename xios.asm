@@ -334,7 +334,7 @@ SELMEMORY:
 	;; rra
 	;; rra
 	;; and	3	
-	;; add	a,03Ch
+	;; add	a,05Ch
 	;; ld	c,a
 	;; call	dbgout
 	;; and	a,3
@@ -527,12 +527,12 @@ SYSTEMINIT:
 ;; 	jp	nz,test_bank_setup_loop
 ;; 	jp	after_bank_setup
 ;; bank_setup:
-;; 	LD	A,3<<3		; SELECT BANK 3
-;; 	CALL	STMVTR		; SET UP VECTORS
-;; 	LD	A,2<<3		; SELECT BANK 2
-;; 	CALL	STMVTR		; SET UP VECTORS
-;; 	LD	A,1<<3		; SELECT BANK 1
-;; 	CALL	STMVTR		; SET UP VECTORS
+	LD	A,3<<3		; SELECT BANK 3
+	CALL	STMVTR		; SET UP VECTORS
+	LD	A,2<<3		; SELECT BANK 2
+	CALL	STMVTR		; SET UP VECTORS
+	LD	A,1<<3		; SELECT BANK 1
+	CALL	STMVTR		; SET UP VECTORS
 ;; after_bank_setup:
 ;; 	else
 ;; 	ld	a,3<<3		; bank 3 select for directo
@@ -558,8 +558,8 @@ SYSTEMINIT:
 ;; 	ldir
 ;; dontfill:
 ;; 	endif
-;; 	LD	A,000H		; SELECT BANK 0
-;; 	CALL	STMVTR		; SET UP VECTORS
+	LD	A,000H		; SELECT BANK 0
+	CALL	STMVTR		; SET UP VECTORS
 
 ;;	ld	hl,LDRBIOSBASE+DENSITY_MASK_OFFSET
 ;;	LD	DE,SEL0		;	THE SETUP PROGRAM

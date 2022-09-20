@@ -512,7 +512,6 @@ fiogo3:
 	jr	z,fiogo3	;loop until I/O complete
 
 	ld	a,(fdstat)	;retrieve status from I/O operation
-;	jp	regdump
 	ret			;exit
 
 fiogo4:

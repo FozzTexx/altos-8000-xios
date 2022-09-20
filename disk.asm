@@ -237,13 +237,14 @@ setse2:
 
 setdma:
 	ld	(usrdma),bc	;save caller's "DMA" address
-	if	mpm20
-	call	swtuser
-	in	a,(bankpt)
-	and	00011000b
-	ld	(usrbnk),a
-	call	swtsys
-	endif
+	;; call	swtuser
+	;; in	a,(bankpt)
+	;; rra
+	;; rra
+	;; rra
+	;; and	a,3
+	;; ld	(usrbnk),a
+	;; call	swtsys
 	ret			;exit
 
 ;----------------------------------------------------------------------
@@ -336,6 +337,13 @@ read:
 	;; ld	c,' '
 	;; call	dbgout
 	;; ld	bc,(newpsc)
+	;; call	puthex4
+	;; ld	c,' '
+	;; call	dbgout
+	;; ld	a,(usrbnk)
+	;; ld	c,a
+	;; call	puthex2
+	;; ld	bc,(usrdma)
 	;; call	puthex4
 	;; ld	hl,newln
 	;; call	putmsg
@@ -636,21 +644,18 @@ rw190:				;transfer data between caller and buffer
 
 rw192:
 	if	mpm20
-	in	a,(bankpt)	;get current bank select info
-	push	af
-	and	11100111b	;zero out current bank number
-	ld	b,a		;save it
-	ld	a,(usrbnk)	;get caller's bank
-	or	b		;combin with bank select
-	out	(bankpt),a	;set DMA bank number
+	push	de
+	push	hl
+	call	swtuser
+	pop	hl
+	pop	de
 	endif
-	
+
 	ld	bc,128		;length of data transfer
 	ldir			;move
 
 	if	mpm20
-	pop	af
-	out	(bankpt),a
+	call	swtsys
 	endif
 	ret			;exit
 
@@ -750,7 +755,7 @@ rw280:				;As necessary, do drive select, seek,
 	newpage
 newldb:	dw	0		;new LDB address
 usrdma:	dw	0		;caller's "DMA" address
-usrbnk:	db	0
+;; usrbnk:	db	0
 
 newpdb:	dw	0		;new PDB address
 

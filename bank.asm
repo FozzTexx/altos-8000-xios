@@ -130,7 +130,7 @@ selbank:
 	;; call	dbgout
 	
 	in	a,(bankpt)
-	and	memsk		; Preserve DMA bank and write protect
+	and	dmamsk		; Preserve DMA bank and write protect
 	ld	b,a
 	ld	a,c
 	rla
